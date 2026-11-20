@@ -79,7 +79,10 @@ All talk to the device over USB serial and need `pip install pyserial pillow`.
 | `fix_pioarduino_scons.py` | The Windows SCons fix above. |
 
 Serial developer commands added in this fork: `CMD:SCREENSHOT` (existing, made
-reliable on the S3's USB CDC) and `CMD:THEME:<n>`.
+reliable on the S3's USB CDC), `CMD:THEME:<n>`, and `CMD:SLEEPPREVIEW`, which
+draws the sleep screen without sleeping (USB is off once the device really
+sleeps). Send `CMD:SLEEPPREVIEW` and `CMD:SCREENSHOT` together, or Home redraws
+over the preview first; `CMD:THEME:6` returns to Home.
 
 ## What is in the fork
 
@@ -95,6 +98,10 @@ reliable on the S3's USB CDC) and `CMD:THEME:<n>`.
   stuck-power-line retry wake (`src/main.cpp`, `lib/hal/HalPowerManager.cpp`).
 - **Windows build fix** in `scripts/git_branch.py` (pioarduino's include
   shortening wrapper ignores middleware patterns).
+- **CrossMux branding**: the boot logo (`src/images/Logo120.h`, an ink drop in
+  an open book, stored rotated like the panel framebuffer), the name under it
+  with a "built on CrossInk" line, the default sleep screen name
+  (`STR_CROSSINK`), and the web portal's logo, wordmark, titles, and footer.
 
 ## Releases and OTA updates
 
@@ -126,10 +133,14 @@ see an update as newer; flash a `2.0.0.1` or later build over USB once.
 
 `Settings > Display > Sleep Screen > Custom + Reading Strip` (tall screens only)
 draws the custom sleep image (same folder, pinning, and Fit/Crop setting as
-Custom) in the band above a 60 px strip, top-aligned. The strip has two rows
-(`DashboardTheme::drawSleepReadingStrip()`): the bold book title with the
-chapter right-aligned, then `42% · 3h 10m left · done by Dec 3 · 25m today ·
-5 day streak`, dropping trailing items that don't fit. A 480x800 X4 image scales to
+Custom) in the band above a 60 px strip, top-aligned. The strip is one line
+(`DashboardTheme::drawSleepReadingStrip()`) in the largest face that fits
+(Lexend Deca 16, then 14, then the UI font; its glyphs are prewarmed first): the
+bold title on the left, then `3h 6m left`, a flame icon with the streak, and the
+bold percentage, right-aligned. On long titles the streak drops first, then
+time left; the title is only shortened if it cannot fit beside the percentage.
+A 6 px progress bar sits 6 px above the bottom edge, clear of the recessed
+panel's bezel shadow, with a 1 px track for the unread part. A 480x800 X4 image scales to
 exactly 540x900. With no book opened yet the image gets the whole screen. The
 strip is drawn into the B/W base only; on the T5's overlay grayscale the gray
 passes leave its band blank. Converted images are cached per target size, so
@@ -165,15 +176,16 @@ move a highlight across the dock. Reader menus still use the reader mapping.
   re-deriving against upstream's rewritten touch polling.
 - List-style Home themes (Classic, Lyra, Lyra 3-Covers, RoundedRaff) still leave
   space below a 5-item menu.
-- OTA update checks still read uxjulia/CrossInk releases, which have no T5
-  firmware; point them at this fork's releases or disable them for `lilygo`.
 - Move to the final `v2.0.0` tag when CrossInk publishes it.
 - **Backlight switching by itself** (seen twice; it switched and stayed).
   Suspect: an accidental Home double-tap, whose default action is Toggle
   Frontlight (`homeButtonDoubleTapAction`). The serial log prints
-  `Frontlight toggled on/off by Home key` when that path fires. If confirmed,
-  consider Aurora's "contact after a polling gap is never a tap" fix for the
-  GT911 Home key, or a different T5 default for Home double-tap.
+  `Frontlight toggled on/off by Home key` when that path fires. Mitigated in
+  `52884edb`: Home taps under 50 ms are ignored as pad flicker, and the T5's
+  Home double-tap now defaults to Ignore (existing settings keep their saved
+  value: change it under Settings > Controls > Home button gestures). Light
+  sleep polls touch only every ~150 ms, so a flicker during it can still pass;
+  watch for a recurrence.
 
 ## Parked
 
