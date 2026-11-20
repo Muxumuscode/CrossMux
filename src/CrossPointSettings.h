@@ -356,6 +356,14 @@ class CrossPointSettings : public PersistableStore<CrossPointSettings> {
 
   static constexpr uint8_t QUICK_ACTION_SLOT_ACTION_COUNT = 23;
 
+#if defined(FREEINK_DEVICE_LILYGO) && FREEINK_DEVICE_LILYGO
+  // The T5's Home pad sits under the gripping thumb, so an accidental double tap
+  // must not silently change state; the light stays on its swipe-down panel.
+  static constexpr uint8_t DEFAULT_HOME_BUTTON_DOUBLE_TAP_ACTION = IGNORE;
+#else
+  static constexpr uint8_t DEFAULT_HOME_BUTTON_DOUBLE_TAP_ACTION = HOME_BUTTON_TOGGLE_FRONTLIGHT;
+#endif
+
   // Legacy Hide Battery % values (migration only)
   enum HIDE_BATTERY_PERCENTAGE { HIDE_NEVER = 0, HIDE_READER = 1, HIDE_ALWAYS = 2, HIDE_BATTERY_PERCENTAGE_COUNT };
 
@@ -570,7 +578,7 @@ class CrossPointSettings : public PersistableStore<CrossPointSettings> {
   // X4 Pro capacitive Home-key actions. Values below SHORT_PWRBTN_COUNT map
   // directly to the matching power-button shortcut action.
   uint8_t homeButtonTapAction = HOME_BUTTON_BACK_HOME;
-  uint8_t homeButtonDoubleTapAction = HOME_BUTTON_TOGGLE_FRONTLIGHT;
+  uint8_t homeButtonDoubleTapAction = DEFAULT_HOME_BUTTON_DOUBLE_TAP_ACTION;
   uint8_t homeButtonLongPressAction = HOME_BUTTON_READER_MENU;
   // Home-key devices can lock the capacitive Home key while a reader page is
   // active. Reader menus temporarily override this without changing the value.

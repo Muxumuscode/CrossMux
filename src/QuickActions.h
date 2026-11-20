@@ -209,7 +209,7 @@ inline void synchronize(CrossPointSettings& settings, Trigger preferred = Trigge
     settings.homeButtonLongPressAction = CrossPointSettings::HOME_BUTTON_READER_MENU;
   }
   if (owner != Trigger::DoubleTapHome && doubleTapHome) {
-    settings.homeButtonDoubleTapAction = CrossPointSettings::HOME_BUTTON_TOGGLE_FRONTLIGHT;
+    settings.homeButtonDoubleTapAction = CrossPointSettings::DEFAULT_HOME_BUTTON_DOUBLE_TAP_ACTION;
   }
   if (owner != Trigger::SideUpShort && sideUpShort) settings.sideButtonUpShort = CrossPointSettings::IGNORE;
   if (owner != Trigger::SideUpLong && sideUpLong) settings.sideButtonUpLong = CrossPointSettings::IGNORE;
@@ -246,7 +246,7 @@ inline void applyTrigger(CrossPointSettings& settings, const Trigger trigger) {
     settings.homeButtonLongPressAction = CrossPointSettings::HOME_BUTTON_READER_MENU;
   }
   if (settings.homeButtonDoubleTapAction == CrossPointSettings::QUICK_ACTIONS) {
-    settings.homeButtonDoubleTapAction = CrossPointSettings::HOME_BUTTON_TOGGLE_FRONTLIGHT;
+    settings.homeButtonDoubleTapAction = CrossPointSettings::DEFAULT_HOME_BUTTON_DOUBLE_TAP_ACTION;
   }
   if (settings.sideButtonUpShort == CrossPointSettings::QUICK_ACTIONS)
     settings.sideButtonUpShort = CrossPointSettings::IGNORE;

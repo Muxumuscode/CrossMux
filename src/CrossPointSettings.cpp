@@ -844,7 +844,7 @@ bool CrossPointSettings::fromJson(JsonVariantConst doc, bool importingCrossPoint
       needsResave = true;
     }
     if (homeButtonDoubleTapAction == QUICK_ACTIONS) {
-      homeButtonDoubleTapAction = HOME_BUTTON_TOGGLE_FRONTLIGHT;
+      homeButtonDoubleTapAction = DEFAULT_HOME_BUTTON_DOUBLE_TAP_ACTION;
       needsResave = true;
     }
   }

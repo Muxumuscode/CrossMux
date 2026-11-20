@@ -919,9 +919,34 @@ bool executeX4ProHomeButtonAction(const uint8_t action,
   return true;
 }
 
+#if FREEINK_DEVICE_LILYGO && !defined(SIMULATOR)
+// The T5's capacitive Home key sits in the lower bezel where the reader is held.
+// The GT911 reports it as a status bit and InputManager turns ANY press/release
+// edge into a tap, so a thumb resting near the pad can flicker the bit into two
+// "taps" inside the 300 ms double-tap window -- which by default toggles the
+// frontlight (seen as the light switching itself). A fingertip tap holds the pad
+// for well over this; shorter press/release pairs are treated as noise.
+constexpr unsigned long T5_HOME_KEY_MIN_TAP_MS = 50;
+unsigned long t5HomeKeyPressedAt = 0;
+bool t5HomeKeyTapIsBlip = false;
+
+// Once per loop, after the input update and before any Home-key handler (those
+// read the tap several times per loop).
+void trackT5HomeKeyPress() {
+  const unsigned long now = millis();
+  if (gpio.wasHomeKeyPressed()) t5HomeKeyPressedAt = now;
+  t5HomeKeyTapIsBlip = gpio.wasHomeKeyTapped() && now - t5HomeKeyPressedAt < T5_HOME_KEY_MIN_TAP_MS;
+  if (t5HomeKeyTapIsBlip) {
+    LOG_DBG("HOME", "Ignored a %lu ms Home-key blip", now - t5HomeKeyPressedAt);
+  }
+}
+#endif
+
 bool wasX4ProHomeKeyTapped() {
 #ifdef SIMULATOR
   return simulatorHomeKeyInput.wasTapped();
+#elif FREEINK_DEVICE_LILYGO
+  return gpio.wasHomeKeyTapped() && !t5HomeKeyTapIsBlip;
 #else
   return gpio.wasHomeKeyTapped();
 #endif
@@ -1982,6 +2007,8 @@ void loop() {
   mappedInputManager.update();
 #ifdef SIMULATOR
   simulatorHomeKeyInput.update();
+#elif FREEINK_DEVICE_LILYGO
+  trackT5HomeKeyPress();
 #endif
   if (activityManager.requiresExclusiveStorageLoop()) {
     // USB Drive owns the USB PHY and raw SD card. Keep the normal serial
