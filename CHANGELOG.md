@@ -1,3 +1,19 @@
+## [Unreleased] - CrossMux (LilyGo T5 S3)
+
+### Added
+
+- LilyGo T5-4.7 S3 Pro Lite support (`pio run -e lilygo`): parallel e-paper panel, GT911 touch, capacitive Home key, frontlight, RTC, and battery gauge.
+- Home themes size their covers, cards, and menu rows for the T5's taller 540x960 screen; other devices keep their layouts.
+- On tall screens, the Dashboard Home and sleep screens add lifetime totals (books read, reading time, pages turned, longest streak) and a reading calendar of recent weeks.
+- Developer serial command `CMD:THEME:<n>` switches the Home theme in memory for screenshots, plus T5 USB tools in `scripts/lilygo/`.
+
+### Fixed
+
+- T5 deep sleep powers down the panel PMIC, parks touch in reset, latches the frontlight off, and no longer idles if the power button never reads released.
+- T5 frontlight dims smoothly to 1% (1 kHz, 12-bit PWM with boost start-up floors).
+- Serial screenshots are complete on ESP32-S3 boards using the hardware USB CDC port.
+- Builds on Windows no longer fail with duplicate build-info objects.
+
 ## [v2.0.0] - 2026-11-19
 
 ### Added
