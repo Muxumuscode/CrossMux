@@ -22,7 +22,12 @@
 
 namespace AppVersion {
 const char* version() { return CROSSINK_VERSION; }
+// The T5 build is CrossMux, versioned separately from CrossInk (2.0.0.N).
+#if defined(FREEINK_DEVICE_LILYGO) && FREEINK_DEVICE_LILYGO
+const char* versionLabel() { return "CrossMux " CROSSINK_VERSION; }
+#else
 const char* versionLabel() { return "CrossInk " CROSSINK_VERSION; }
+#endif
 const char* userAgent() { return "CrossInk-ESP32-" CROSSINK_VERSION; }
 const char* supportVersion() { return CROSSINK_SUPPORT_VERSION; }
 const char* sdkSha() { return CROSSINK_SDK_SHA; }

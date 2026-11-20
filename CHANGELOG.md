@@ -13,6 +13,7 @@
 
 ### Changed
 
+- On the T5, the version shows as `CrossMux 2.0.0.1` at the bottom of Settings, in About, on the boot screen, and in Check for Updates.
 - On the T5, Check for Updates now follows CrossMux's own releases instead of CrossInk's. CrossMux builds are numbered `2.0.0.1`, `2.0.0.2`, and so on, and devices only update to full releases, never pre-releases.
 - On the T5, Controls and Quick Actions name the keys as printed on the case (BOOT, IO48) and no longer list settings for a side key the T5 doesn't have. New T5 installs default BOOT's tap to Previous Page in books, so BOOT pages back and IO48 pages forward.
 
