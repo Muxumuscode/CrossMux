@@ -122,4 +122,8 @@ reliable on the S3's USB CDC) and `CMD:THEME:<n>`.
   Plan: on `lilygo`, rename "Power Button" to BOOT and "Side Buttons" to IO48,
   show only the IO48 short/long actions, hide the settings that need a key the
   T5 lacks (the Up side key and its chords), and use BOOT in power-on hints.
+  Defaults on `lilygo` (decided): BOOT short press = Previous Page, BOOT long
+  press = Sleep/Wake, IO48 short press = Next Page. Both actions already exist
+  (`SHORT_PWRBTN::PREVIOUS_PAGE`, `sideButtonDownShort = PAGE_TURN`); only the
+  T5's default for `shortPwrBtn` changes.
 - Move to the final `v2.0.0` tag when CrossInk publishes it.
