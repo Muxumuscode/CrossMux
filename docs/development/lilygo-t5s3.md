@@ -126,4 +126,10 @@ reliable on the S3's USB CDC) and `CMD:THEME:<n>`.
   press = Sleep/Wake, IO48 short press = Next Page. Both actions already exist
   (`SHORT_PWRBTN::PREVIOUS_PAGE`, `sideButtonDownShort = PAGE_TURN`); only the
   T5's default for `shortPwrBtn` changes.
+  Combo: BOOT + IO48 together is today a fixed Screenshot chord (Power + Down,
+  `src/main.cpp` `updatePowerDown`). The configurable "Power + Up Combo" can't
+  fire on the T5 (no Up key). On `lilygo`, make the configurable combo use
+  BOOT + IO48 (`chordButtonPressed` reads `BTN_DOWN`), skip the fixed screenshot
+  chord, default the combo to Screenshot (`CHORD_SCREENSHOT`) so nothing is
+  lost, and label it "BOOT + IO48 Combo".
 - Move to the final `v2.0.0` tag when CrossInk publishes it.
