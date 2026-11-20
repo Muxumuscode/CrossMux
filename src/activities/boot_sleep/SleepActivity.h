@@ -37,7 +37,10 @@ class SleepActivity final : public Activity {
     BookReadingStats stats;
     bool hasStats = false;
     float progressPercent = -1.0f;
+    std::string title;
     std::string chapterTitle;
+    uint32_t todaySeconds = 0;
+    uint16_t streakDays = 0;
   };
   void renderCustomSleepScreen(bool withReadingStrip = false) const;
   bool renderCustomSleepBmp(const std::string& path, const ReadingStrip& strip) const;

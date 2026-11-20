@@ -45,13 +45,20 @@ class DashboardTheme : public MinimalTheme {
   // with its index as the id. `pressedIndex` (or -1) draws as highlighted.
   static void drawHomeDock(const GfxRenderer& renderer, const UIIcon* icons, int count, int pressedIndex);
 
-  // "Custom + Reading Strip" sleep screen: a white strip of current-book stat
-  // cells (Progress, Time Left, Chapter) under the custom image. 60 px lets an
-  // X4-sized 480x800 image scale to exactly 540x900 above it on the T5.
+  // "Custom + Reading Strip" sleep screen: a white strip under the custom image.
+  // Row 1: book title (bold) and chapter. Row 2: progress, time left, estimated
+  // finish, today's reading, and streak, dropping the last items that don't fit.
+  // 60 px lets an X4-sized 480x800 image scale to exactly 540x900 above it.
   static constexpr int kSleepReadingStripHeight = 60;
-  // `stats` is null when reading stats are off for the book (Time Left hidden).
-  static void drawSleepReadingStrip(const GfxRenderer& renderer, const Rect& strip, const BookReadingStats* stats,
-                                    float progressPercent, const char* chapterTitle);
+  struct SleepStripInfo {
+    const char* title = nullptr;
+    const char* chapterTitle = nullptr;
+    const BookReadingStats* stats = nullptr;  // null: no Time Left / finish date
+    float progressPercent = -1.0f;
+    uint32_t todaySeconds = 0;  // 0: omitted
+    uint16_t streakDays = 0;    // 0: omitted
+  };
+  static void drawSleepReadingStrip(const GfxRenderer& renderer, const Rect& strip, const SleepStripInfo& info);
 
   static Rect getHomeCoverRect(const GfxRenderer& renderer);
   static Rect getSleepCoverRect(const GfxRenderer& renderer);

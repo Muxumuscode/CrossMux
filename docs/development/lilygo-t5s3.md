@@ -100,9 +100,10 @@ reliable on the S3's USB CDC) and `CMD:THEME:<n>`.
 
 `Settings > Display > Sleep Screen > Custom + Reading Strip` (tall screens only)
 draws the custom sleep image (same folder, pinning, and Fit/Crop setting as
-Custom) in the band above a 60 px strip, top-aligned, and fills the strip with
-the current book's Progress, Time Left, and Chapter
-(`DashboardTheme::drawSleepReadingStrip()`). A 480x800 X4 image scales to
+Custom) in the band above a 60 px strip, top-aligned. The strip has two rows
+(`DashboardTheme::drawSleepReadingStrip()`): the bold book title with the
+chapter right-aligned, then `42% · 3h 10m left · done by Dec 3 · 25m today ·
+5 day streak`, dropping trailing items that don't fit. A 480x800 X4 image scales to
 exactly 540x900. With no book opened yet the image gets the whole screen. The
 strip is drawn into the B/W base only; on the T5's overlay grayscale the gray
 passes leave its band blank. Converted images are cached per target size, so
@@ -141,6 +142,12 @@ move a highlight across the dock. Reader menus still use the reader mapping.
 - OTA update checks still read uxjulia/CrossInk releases, which have no T5
   firmware; point them at this fork's releases or disable them for `lilygo`.
 - Move to the final `v2.0.0` tag when CrossInk publishes it.
+- **Backlight switching by itself** (seen twice; it switched and stayed).
+  Suspect: an accidental Home double-tap, whose default action is Toggle
+  Frontlight (`homeButtonDoubleTapAction`). The serial log prints
+  `Frontlight toggled on/off by Home key` when that path fires. If confirmed,
+  consider Aurora's "contact after a polling gap is never a tap" fix for the
+  GT911 Home key, or a different T5 default for Home double-tap.
 
 ## Parked
 

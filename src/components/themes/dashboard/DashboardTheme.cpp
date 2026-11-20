@@ -773,47 +773,97 @@ void DashboardTheme::drawHomeDock(const GfxRenderer& renderer, const UIIcon* ico
   }
 }
 
-void DashboardTheme::drawSleepReadingStrip(const GfxRenderer& renderer, const Rect& strip,
-                                           const BookReadingStats* stats, const float progressPercent,
-                                           const char* chapterTitle) {
+namespace {
+constexpr int kSleepStripSidePadding = 16;
+constexpr int kSleepStripRowGap = 2;
+constexpr int kSleepStripTitleChapterGap = 16;
+constexpr char kSleepStripSeparator[] = " \xC2\xB7 ";  // " · "
+
+// Appends `item` to `line` (with a separator) if the result still fits `maxW`.
+// Returns false once an item doesn't fit, so callers stop at the first drop and
+// the remaining items keep their priority order.
+bool appendIfFits(const GfxRenderer& renderer, std::string& line, const char* item, const int maxW) {
+  if (item == nullptr || item[0] == '\0') return true;
+  std::string candidate = line.empty() ? std::string(item) : line + kSleepStripSeparator + item;
+  if (renderer.getTextWidth(SMALL_FONT_ID, candidate.c_str()) > maxW) return false;
+  line = std::move(candidate);
+  return true;
+}
+}  // namespace
+
+void DashboardTheme::drawSleepReadingStrip(const GfxRenderer& renderer, const Rect& strip, const SleepStripInfo& info) {
   renderer.fillRect(strip.x, strip.y, strip.width, strip.height, false);
   renderer.drawLine(strip.x, strip.y, strip.x + strip.width - 1, strip.y, true);
 
-  char progress[8];
-  if (progressPercent >= 0.0f) {
-    snprintf(progress, sizeof(progress), "%d%%", static_cast<int>(progressPercent + 0.5f));
-  } else {
-    snprintf(progress, sizeof(progress), "-");
-  }
-  char timeLeft[24];
-  uint32_t secondsLeft = 0;
-  if (stats != nullptr && !stats->isCompleted && estimatedTimeLeft(*stats, progressPercent, secondsLeft)) {
-    formatCompactDuration(secondsLeft, timeLeft, sizeof(timeLeft));
-  } else {
-    snprintf(timeLeft, sizeof(timeLeft), "-");
-  }
-  const char* chapter = (chapterTitle != nullptr && chapterTitle[0] != '\0') ? chapterTitle : "-";
+  const int x = strip.x + kSleepStripSidePadding;
+  const int width = std::max(0, strip.width - 2 * kSleepStripSidePadding);
+  const int titleLineH = renderer.getLineHeight(UI_10_FONT_ID);
+  const int statsLineH = renderer.getLineHeight(SMALL_FONT_ID);
+  const int top = strip.y + std::max(0, (strip.height - titleLineH - kSleepStripRowGap - statsLineH) / 2);
 
-  // Numbers get a quarter of the width each; the chapter name gets the rest.
-  // Without stats, Progress and Chapter split the strip.
-  const bool showTimeLeft = stats != nullptr;
-  const int numberW = strip.width / 4;
-  const int chapterW = strip.width - numberW * (showTimeLeft ? 2 : 1);
-  const int top = strip.y + std::max(0, (strip.height - totalsRowHeight(renderer)) / 2);
-  int x = strip.x;
-  drawCenteredStat(renderer, x + numberW / 2, top, numberW - kTotalsLabelPadding, progress, tr(STR_STATS_PROGRESS_LBL),
-                   true);
-  x += numberW;
-  if (showTimeLeft) {
-    drawCenteredStat(renderer, x + numberW / 2, top, numberW - kTotalsLabelPadding, timeLeft, tr(STR_TIME_LEFT_SHORT),
-                     true);
-    x += numberW;
+  // Row 1: bold title on the left; the chapter, when present, right-aligned
+  // and given at most 45% of the row so the title stays readable.
+  const char* chapter = (info.chapterTitle != nullptr && info.chapterTitle[0] != '\0') ? info.chapterTitle : nullptr;
+  int chapterW = 0;
+  std::string visibleChapter;
+  if (chapter != nullptr) {
+    visibleChapter = renderer.truncatedText(UI_10_FONT_ID, chapter, width * 45 / 100);
+    chapterW = renderer.getTextWidth(UI_10_FONT_ID, visibleChapter.c_str());
+    renderer.drawText(UI_10_FONT_ID, x + width - chapterW, top, visibleChapter.c_str(), true);
   }
-  // drawCenteredStat does not truncate the value; a chapter title can be long.
-  const auto visibleChapter =
-      renderer.truncatedText(UI_12_FONT_ID, chapter, chapterW - kTotalsLabelPadding, EpdFontFamily::BOLD);
-  drawCenteredStat(renderer, x + chapterW / 2, top, chapterW - kTotalsLabelPadding, visibleChapter.c_str(),
-                   tr(STR_CHAPTER), true);
+  const char* title = (info.title != nullptr && info.title[0] != '\0') ? info.title : "-";
+  const int titleMaxW = std::max(1, width - (chapterW > 0 ? chapterW + kSleepStripTitleChapterGap : 0));
+  const auto visibleTitle = renderer.truncatedText(UI_10_FONT_ID, title, titleMaxW, EpdFontFamily::BOLD);
+  renderer.drawText(UI_10_FONT_ID, x, top, visibleTitle.c_str(), true, EpdFontFamily::BOLD);
+
+  // Row 2, in priority order.
+  char progress[8] = "";
+  if (info.progressPercent >= 0.0f) {
+    snprintf(progress, sizeof(progress), "%d%%", static_cast<int>(info.progressPercent + 0.5f));
+  }
+  char timeLeft[40] = "";
+  char finish[40] = "";
+  uint32_t secondsLeft = 0;
+  if (info.stats != nullptr && !info.stats->isCompleted &&
+      estimatedTimeLeft(*info.stats, info.progressPercent, secondsLeft)) {
+    char duration[24];
+    formatCompactDuration(secondsLeft, duration, sizeof(duration));
+    snprintf(timeLeft, sizeof(timeLeft), tr(STR_SLEEP_STRIP_TIME_LEFT_FORMAT), duration);
+    ReadingStatsDateTime now;
+    if (halClock.isAvailable() && getCurrentLocalReadingStatsDateTime(now)) {
+      ReadingStatsDate finishDate;
+      if (!estimateFinishDateFromDailyPace(*info.stats, now, secondsLeft, finishDate)) {
+        ReadingStatsDateTime atPace = now;
+        addSecondsToReadingStatsDateTime(atPace, secondsLeft);
+        finishDate = atPace.date;
+      }
+      if (finishDate.isValid()) {
+        char date[24];
+        formatReadingStatsShortDate(finishDate, date, sizeof(date));
+        snprintf(finish, sizeof(finish), tr(STR_SLEEP_STRIP_FINISH_FORMAT), date);
+      }
+    }
+  }
+  char today[40] = "";
+  if (info.todaySeconds >= 60) {
+    char duration[24];
+    formatCompactDuration(info.todaySeconds, duration, sizeof(duration));
+    snprintf(today, sizeof(today), tr(STR_SLEEP_STRIP_TODAY_FORMAT), duration);
+  }
+  char streak[40] = "";
+  if (info.streakDays > 0) {
+    snprintf(streak, sizeof(streak), tr(STR_STATS_DAY_STREAK_FORMAT), static_cast<unsigned>(info.streakDays));
+  }
+
+  std::string stats;
+  for (const char* item :
+       {static_cast<const char*>(progress), static_cast<const char*>(timeLeft), static_cast<const char*>(finish),
+        static_cast<const char*>(today), static_cast<const char*>(streak)}) {
+    if (!appendIfFits(renderer, stats, item, width)) break;
+  }
+  if (!stats.empty()) {
+    renderer.drawText(SMALL_FONT_ID, x, top + titleLineH + kSleepStripRowGap, stats.c_str(), true);
+  }
 }
 
 Rect DashboardTheme::getHomeCoverRect(const GfxRenderer& renderer) {
