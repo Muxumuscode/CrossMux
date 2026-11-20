@@ -9,8 +9,11 @@ class GfxRenderer;
 namespace Lyra3CoversMetrics {
 constexpr ThemeMetrics values = [] {
   ThemeMetrics v = LyraMetrics::values;
-  v.menuRowHeight = 46;
-  v.homeCoverTileHeight = 300;
+  v.menuRowHeight = tallScreenValue(46, 60);
+  // Three covers share the row, so width caps them at the original 226 px
+  // even where Lyra's single cover grows on tall screens.
+  v.homeCoverHeight = 226;
+  v.homeCoverTileHeight = tallScreenValue(300, 320);
   v.homeRecentBooksCount = 3;
   v.keyboardKeyHeight = 56;
   v.keyboardCenteredText = true;

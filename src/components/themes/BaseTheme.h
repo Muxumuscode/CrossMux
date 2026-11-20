@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "components/OptionLabels.h"
+#include "components/themes/TallScreen.h"
 #include "fontIds.h"
 #include "util/ReaderStatusBarConfig.h"
 
@@ -217,8 +218,8 @@ constexpr ThemeMetrics values = {.batteryWidth = StatusBarMetrics::batteryWidth,
                                  .scrollBarWidth = 4,
                                  .scrollBarRightOffset = 5,
                                  .homeTopPadding = 40,
-                                 .homeCoverHeight = 370,
-                                 .homeCoverTileHeight = 370,
+                                 .homeCoverHeight = tallScreenValue(370, 500),
+                                 .homeCoverTileHeight = tallScreenValue(370, 500),
                                  .homeRecentBooksCount = 1,
                                  .homeContinueReadingInMenu = false,
                                  .homeMenuTopOffset = 10,

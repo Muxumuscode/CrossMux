@@ -586,8 +586,9 @@ void drawFooterStats(const GfxRenderer& renderer, const Rect& footer, const Glob
                             inverted);
 }
 
-void drawBookText(const GfxRenderer& renderer, const Rect& text, const RecentBook& book,
-                  const char* currentChapterTitle, const bool black = true) {
+// Returns the y just below the last drawn line, so callers can lay out below it.
+int drawBookText(const GfxRenderer& renderer, const Rect& text, const RecentBook& book,
+                 const char* currentChapterTitle, const bool black = true) {
   const int textW = text.width;
   const char* title = book.title.empty() ? book.path.c_str() : book.title.c_str();
   auto titleLines = renderer.wrappedText(renderer.filenameFontId(UI_12_FONT_ID), title, textW, kBookTitleMaxLines,
@@ -611,6 +612,180 @@ void drawBookText(const GfxRenderer& renderer, const Rect& text, const RecentBoo
       renderer.drawText(renderer.filenameFontId(UI_12_FONT_ID), text.x, subtitleY, line.c_str(), black);
       subtitleY += titleLineH;
     }
+    textY = subtitleY;
+  }
+  return textY;
+}
+
+// ---------------------------------------------------------------------------
+// Tall-screen extras: lifetime totals and a reading calendar.
+//
+// Screens taller than the X3/X4 (e.g. LilyGo T5 S3, 540x960) leave a band in
+// the text rect below the book title/chapter. Fill it from data already loaded
+// for Home (GlobalReadingStats), so this adds no SD reads. X3/X4 never reach
+// the height threshold, so their layout is unchanged. Totals take priority:
+// the calendar draws only when the band can hold it at a legible cell size.
+// ---------------------------------------------------------------------------
+constexpr int kExtrasMinScreenHeight = 801;
+constexpr int kExtrasTopGap = 20;
+constexpr int kExtrasBottomGap = 16;  // Extra clearance above the footer.
+constexpr int kExtrasColumnGap = 20;  // Between the totals block and the calendar.
+constexpr int kTotalsCount = 4;
+constexpr int kTotalsGridColumns = 2;  // 2x2 block beside the calendar.
+constexpr int kTotalsGridWidth = 252;  // 126 px columns fit "Longest Streak" in SMALL.
+constexpr int kTotalsGridRowGap = 10;
+constexpr int kTotalsLabelPadding = 4;
+constexpr int kCalendarCellGap = 3;
+constexpr int kCalendarMinCell = 9;
+constexpr int kCalendarMaxCell = 15;
+constexpr int kCalendarDaysPerWeek = 7;
+
+// Labels use the stats column's SMALL font: the wider UI_10 footer font
+// truncates "Reading Time" / "Longest Streak" in a ~126 px column.
+int totalsCellHeight(const GfxRenderer& renderer) {
+  return renderer.getLineHeight(UI_12_FONT_ID) + kStatsValueLabelGap + renderer.getLineHeight(SMALL_FONT_ID);
+}
+
+int totalsBlockHeight(const GfxRenderer& renderer, const int columns) {
+  const int rows = (kTotalsCount + columns - 1) / columns;
+  return rows * totalsCellHeight(renderer) + (rows - 1) * kTotalsGridRowGap;
+}
+
+void drawCenteredStat(const GfxRenderer& renderer, const int centerX, const int topY, const int maxW, const char* value,
+                      const char* label, const bool black) {
+  const int valueW = renderer.getTextWidth(UI_12_FONT_ID, value, EpdFontFamily::BOLD);
+  renderer.drawText(UI_12_FONT_ID, centerX - valueW / 2, topY, value, black, EpdFontFamily::BOLD);
+  const std::string visibleLabel = renderer.truncatedText(SMALL_FONT_ID, label, maxW);
+  const int labelW = renderer.getTextWidth(SMALL_FONT_ID, visibleLabel.c_str());
+  renderer.drawText(SMALL_FONT_ID, centerX - labelW / 2,
+                    topY + renderer.getLineHeight(UI_12_FONT_ID) + kStatsValueLabelGap, visibleLabel.c_str(), black);
+}
+
+// Lays the four totals out as a grid with `columns` columns (4 = one row,
+// 2 = a 2x2 block).
+void drawLifetimeTotals(const GfxRenderer& renderer, const int x, const int width, const int topY, const int columns,
+                        const GlobalReadingStats& stats, const bool black) {
+  char booksRead[16];
+  char readingTime[24];
+  char pagesTurned[16];
+  char longestStreak[16];
+  snprintf(booksRead, sizeof(booksRead), "%lu", static_cast<unsigned long>(stats.completedBooks));
+  formatCompactReadingDuration(stats.totalReadingSeconds, readingTime, sizeof(readingTime));
+  snprintf(pagesTurned, sizeof(pagesTurned), "%lu", static_cast<unsigned long>(stats.totalPagesTurned));
+  snprintf(longestStreak, sizeof(longestStreak), "%u", static_cast<unsigned>(stats.displayLongestReadingStreak()));
+
+  const char* values[kTotalsCount] = {booksRead, readingTime, pagesTurned, longestStreak};
+  const char* labels[kTotalsCount] = {tr(STR_STATS_COMPLETED_LBL), tr(STR_STATS_TOTAL_READING_TIME_LBL_SHORT),
+                                      tr(STR_STATS_PAGES_LBL), tr(STR_STATS_LONGEST_STREAK_LBL)};
+  const int columnW = width / columns;
+  const int rowPitch = totalsCellHeight(renderer) + kTotalsGridRowGap;
+  const int maxLabelW = std::max(1, columnW - kTotalsLabelPadding);
+  for (int i = 0; i < kTotalsCount; ++i) {
+    const int col = i % columns;
+    const int row = i / columns;
+    drawCenteredStat(renderer, x + columnW * col + columnW / 2, topY + row * rowPitch, maxLabelW, values[i], labels[i],
+                     black);
+  }
+}
+
+bool historyHasDay(const GlobalReadingStats& stats, const uint32_t dayIndex) {
+  // Bit k of the history records day (anchorDay - k); days after the anchor
+  // have not been read yet.
+  if (dayIndex > stats.readingHistoryAnchorDay) {
+    return false;
+  }
+  const uint32_t bitIndex = stats.readingHistoryAnchorDay - dayIndex;
+  if (bitIndex >= READING_HISTORY_DAYS) {
+    return false;
+  }
+  return (stats.readingHistoryBits[bitIndex / 8] & static_cast<uint8_t>(1u << (bitIndex % 8))) != 0;
+}
+
+// Draws a week-per-column grid (Monday at the top) ending with today's week,
+// right-aligned and vertically centred in the given box. Returns false without
+// drawing when the date is unknown or the box is too small for legible cells.
+bool drawReadingCalendar(const GfxRenderer& renderer, const int x, const int width, const int topY,
+                         const int availableH, const GlobalReadingStats& stats, const bool black) {
+  ReadingStatsDateTime now;
+  if (!getCurrentLocalReadingStatsDateTime(now)) {
+    return false;
+  }
+
+  const int cellFromHeight = (availableH - kCalendarCellGap * (kCalendarDaysPerWeek - 1)) / kCalendarDaysPerWeek;
+  const int cell = std::min(kCalendarMaxCell, cellFromHeight);
+  if (cell < kCalendarMinCell) {
+    return false;
+  }
+  const int pitch = cell + kCalendarCellGap;
+  const int weeks = (width + kCalendarCellGap) / pitch;
+  if (weeks <= 0) {
+    return false;
+  }
+
+  const int gridW = weeks * pitch - kCalendarCellGap;
+  const int gridH = kCalendarDaysPerWeek * pitch - kCalendarCellGap;
+  const int gridX = x + (width - gridW);
+  const int gridY = topY + std::max(0, (availableH - gridH) / 2);
+  const uint32_t today = readingStatsDayIndex(now.date);
+  const int todayRow = readingStatsDayOfWeekIndex(now.date);  // Monday = 0
+
+  for (int col = 0; col < weeks; ++col) {
+    const int weeksAgo = weeks - 1 - col;
+    for (int row = 0; row < kCalendarDaysPerWeek; ++row) {
+      const int daysAgo = weeksAgo * kCalendarDaysPerWeek + (todayRow - row);
+      if (daysAgo < 0) {
+        continue;  // Later this week: not happened yet.
+      }
+      if (static_cast<uint32_t>(daysAgo) > today) {
+        continue;
+      }
+      const int cellX = gridX + col * pitch;
+      const int cellY = gridY + row * pitch;
+      if (historyHasDay(stats, today - static_cast<uint32_t>(daysAgo))) {
+        renderer.fillRect(cellX, cellY, cell, cell, black);
+      } else {
+        renderer.drawRect(cellX, cellY, cell, cell, black);
+      }
+      if (daysAgo == 0) {
+        // Ring today's cell so it reads as "you are here" whether or not it is filled.
+        renderer.drawRect(cellX - 2, cellY - 2, cell + 4, cell + 4, black);
+      }
+    }
+  }
+  return true;
+}
+
+// `text` is the layout's text rect (title/chapter area that runs down to the
+// footer); `textBottomY` is where drawBookText actually stopped.
+void drawTallScreenExtras(const GfxRenderer& renderer, const Rect& text, const int textBottomY,
+                          const GlobalReadingStats* globalStats, const bool black) {
+  if (globalStats == nullptr || renderer.getScreenHeight() < kExtrasMinScreenHeight) {
+    return;
+  }
+  const int x = text.x;
+  const int width = text.width;
+  const int y = textBottomY + kExtrasTopGap;
+  const int bandBottom = text.y + text.height - kExtrasBottomGap;
+  const int bandH = bandBottom - y;
+
+  // Preferred: 2x2 totals on the left, reading calendar beside it at the same
+  // height. Both are centred in the band.
+  const int gridH = totalsBlockHeight(renderer, kTotalsGridColumns);
+  const int calendarX = x + kTotalsGridWidth + kExtrasColumnGap;
+  const int calendarW = width - kTotalsGridWidth - kExtrasColumnGap;
+  if (bandH >= gridH && calendarW > 0) {
+    const int top = y + (bandH - gridH) / 2;
+    if (drawReadingCalendar(renderer, calendarX, calendarW, top, gridH, *globalStats, black)) {
+      drawLifetimeTotals(renderer, x, kTotalsGridWidth, top, kTotalsGridColumns, *globalStats, black);
+      return;
+    }
+  }
+
+  // Fallback (long title/chapter, or no clock for the calendar): one full-width
+  // row of totals, which is the priority item.
+  const int rowH = totalsBlockHeight(renderer, kTotalsCount);
+  if (bandH >= rowH) {
+    drawLifetimeTotals(renderer, x, width, y + (bandH - rowH) / 2, kTotalsCount, *globalStats, black);
   }
 }
 }  // namespace
@@ -655,8 +830,11 @@ void DashboardTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const
   TouchRegistry::getInstance().add(coverRect, 0, TouchRegistry::Cover);
 
   drawDashboardStats(renderer, layout.stats, stats, progressPercent, showBookStatsForPath(recentBooks[0].path));
-  drawBookText(renderer, layout.text, recentBooks[0], currentChapterTitle);
-  if (SETTINGS.shouldTrackReadingStats()) drawFooterStats(renderer, layout.footer, globalStats);
+  const int textBottomY = drawBookText(renderer, layout.text, recentBooks[0], currentChapterTitle);
+  if (SETTINGS.shouldTrackReadingStats()) {
+    drawTallScreenExtras(renderer, layout.text, textBottomY, globalStats, true);
+    drawFooterStats(renderer, layout.footer, globalStats);
+  }
 }
 
 void DashboardTheme::drawSleepScreen(const GfxRenderer& renderer, const RecentBook& book, const BookReadingStats* stats,
@@ -670,6 +848,10 @@ void DashboardTheme::drawSleepScreen(const GfxRenderer& renderer, const RecentBo
   if (coverRect.width <= 0 || coverRect.height <= 0) return;
   drawBookCover(renderer, coverRect, book, inverted ? Color::White : Color::Black);
   drawDashboardStats(renderer, layout.stats, stats, progressPercent, showBookStatsForPath(book.path), inverted);
-  drawBookText(renderer, layout.text, book, currentChapterTitle, inverted);
-  if (SETTINGS.shouldTrackReadingStats()) drawFooterStats(renderer, layout.footer, globalStats, !inverted);
+  const int textBottomY = drawBookText(renderer, layout.text, book, currentChapterTitle, inverted);
+  if (SETTINGS.shouldTrackReadingStats()) {
+    // drawBookText's `black` is `inverted` here, so the extras follow the same colour.
+    drawTallScreenExtras(renderer, layout.text, textBottomY, globalStats, inverted);
+    drawFooterStats(renderer, layout.footer, globalStats, !inverted);
+  }
 }

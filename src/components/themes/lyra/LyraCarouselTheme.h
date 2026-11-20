@@ -14,8 +14,8 @@ constexpr ThemeMetrics makeValues() {
   v.menuRowHeight = 64;
   v.menuSpacing = 8;
   v.homeTopPadding = 28;
-  v.homeCoverHeight = 600;
-  v.homeCoverTileHeight = 660;
+  v.homeCoverHeight = tallScreenValue(600, 680);
+  v.homeCoverTileHeight = tallScreenValue(660, 740);
   v.homeRecentBooksCount = 3;
   v.keyboardKeyHeight = 56;
   v.keyboardCenteredText = true;
@@ -28,7 +28,7 @@ constexpr ThemeMetrics values = makeValues();
 class LyraCarouselTheme : public LyraTheme {
  public:
   // Max cache geometry for the carousel artwork area.
-  static constexpr int kCenterCoverW = 340;
+  static constexpr int kCenterCoverW = tallScreenValue(340, 390);
   static constexpr int kCenterCoverH = LyraCarouselMetrics::values.homeCoverHeight - 60;  // 540
   static constexpr int kCenterCoverVisualInset = 10;
   static constexpr int kBaseDisplayCenterW = (kCenterCoverW * 86) / 100;

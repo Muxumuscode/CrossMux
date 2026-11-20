@@ -12,8 +12,8 @@ constexpr int coverWidthForHeight(const int coverHeight) {
 constexpr ThemeMetrics makeValues() {
   ThemeMetrics v = LyraMetrics::values;
   v.homeTopPadding = 50;
-  v.homeCoverHeight = 583;
-  v.homeCoverTileHeight = 690;
+  v.homeCoverHeight = tallScreenValue(583, 718);
+  v.homeCoverTileHeight = tallScreenValue(690, 850);
   v.homeRecentBooksCount = 1;
   v.homeContinueReadingInMenu = false;
   v.homeMenuTopOffset = 0;
@@ -24,7 +24,7 @@ constexpr ThemeMetrics makeValues() {
 constexpr ThemeMetrics values = makeValues();
 constexpr int homeCoverWidth = coverWidthForHeight(values.homeCoverHeight);
 constexpr int homeCoverImageWidth = homeCoverWidth;
-constexpr int homeCoverImageHeight = 525;
+constexpr int homeCoverImageHeight = tallScreenValue(525, 646);  // 2:3 of the frame width
 }  // namespace MinimalMetrics
 
 struct GlobalReadingStats;
