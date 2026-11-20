@@ -31,11 +31,11 @@ JS_OUT = os.path.join(OUT, "js")
 
 # slug -> (generated identifier, <title>, active nav, extra <head> markup)
 PAGES = {
-    "runner": ("RunnerPageHtml", "Plugins - CrossInk", "settings", '<script src="/plugin-host.js"></script>'),
-    "home":     ("HomePageHtml",     "CrossInk",                   "home",     ""),
-    "files":    ("FilesPageHtml",    "Files - CrossInk",           "files",    '  <script src="/js/jszip.min.js"></script><script src="/plugin-host.js"></script>'),
-    "settings": ("SettingsPageHtml", "Settings - CrossInk Reader", "settings", '<script src="/plugin-host.js"></script>'),
-    "fonts":    ("FontsPageHtml",    "Fonts - CrossInk",           "fonts",    ""),
+    "runner": ("RunnerPageHtml", "Plugins - CrossMux", "settings", '<script src="/plugin-host.js"></script>'),
+    "home":     ("HomePageHtml",     "CrossMux",                   "home",     ""),
+    "files":    ("FilesPageHtml",    "Files - CrossMux",           "files",    '  <script src="/js/jszip.min.js"></script><script src="/plugin-host.js"></script>'),
+    "settings": ("SettingsPageHtml", "Settings - CrossMux", "settings", '<script src="/plugin-host.js"></script>'),
+    "fonts":    ("FontsPageHtml",    "Fonts - CrossMux",           "fonts",    ""),
 }
 
 PRESERVE_TAGS = "pre|code|textarea|script|style"
