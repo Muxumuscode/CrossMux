@@ -11,7 +11,7 @@
 
 #include "HalGPIO.h"
 
-#if FREEINK_DEVICE_EEGO_A4 || FREEINK_DEVICE_PICCO
+#if FREEINK_DEVICE_EEGO_A4 || FREEINK_DEVICE_PICCO || FREEINK_DEVICE_LILYGO
 #include <HalFrontlight.h>
 #endif
 
@@ -150,6 +150,12 @@ void HalPowerManager::startDeepSleep(HalGPIO& gpio) const {
   // The light and touch share I2C. Turn the light off before touch releases it.
   Frontlight.setOn(false);
   if (!gpio.prepareForDeepSleep()) LOG_ERR("PWR", "Touch sleep preparation failed");
+#endif
+#if FREEINK_DEVICE_LILYGO
+  // The T5's PWM gates a PT4103 boost converter's EN pin. setOn(false) only
+  // zeroes the duty; sleep then isolates (floats) the pad, and a floating EN can
+  // read as ON. Drive the pad to the off level and latch it through deep sleep.
+  Frontlight.prepareForDeepSleep();
 #endif
   // Once started, let the SDK exit configuration mode and seal the gauge.
   // Sleep runs on the main task after rendering has stopped. The SDK bounds

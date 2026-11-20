@@ -12,6 +12,7 @@ Simulator environments set CROSSINK_VERSION directly in platformio.ini.
 """
 
 import configparser
+import fnmatch
 import os
 import re
 import subprocess
@@ -263,9 +264,14 @@ def inject_version(env):
     # Keep changing source identity out of unrelated compile commands.
     if hasattr(env, 'AddBuildMiddleware'):
         def add_build_info_defines(node_env, node):
-            build_env = node_env.Clone()
-            build_env.Append(CPPDEFINES=scoped)
-            return build_env.Object(node)
+            # pioarduino's Windows include-shortening wrapper calls every user
+            # middleware for every source, ignoring the registered pattern, and
+            # only merges flags passed as Object() kwargs. Filter here and pass
+            # the defines as kwargs so both code paths build one object per file.
+            src_path = node.srcnode().get_path().replace('\\', '/')
+            if not fnmatch.fnmatch(src_path, '*src/util/BuildInfo.cpp'):
+                return node
+            return node_env.Object(node, CPPDEFINES=list(node_env.get('CPPDEFINES', [])) + scoped)
         env.AddBuildMiddleware(add_build_info_defines, '*src/util/BuildInfo.cpp')
     else:
         env.Append(CPPDEFINES=scoped)

@@ -26,6 +26,9 @@ class HalFrontlight {
   // Warm/cool mix, 0 = cool .. 100 = warm. No-op on single-channel boards.
   void setWarmth(uint8_t warmPercent);
   void setOn(bool on);
+  // Stop the PWM and latch the pad at the LED's off level for deep sleep
+  // (FrontlightManager::prepareForDeepSleep()); the next boot releases the hold.
+  void prepareForDeepSleep() { manager.prepareForDeepSleep(); }
 
   uint8_t brightness() const { return lastBrightness; }
   uint8_t warmth() const { return manager.colorTemperature(); }

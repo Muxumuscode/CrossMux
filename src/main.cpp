@@ -1,5 +1,9 @@
 #include <Arduino.h>
 #include <BoardConfig.h>
+#if FREEINK_DEVICE_LILYGO
+#include <BoardT5S3.h>
+#include <PowerManager.h>
+#endif
 #include <CrossInkHalFrontlight.h>
 #include <FontCacheManager.h>
 #include <FontDecompressor.h>
@@ -1419,6 +1423,19 @@ void setup() {
 #endif
 
   HalSystem::begin();
+#if FREEINK_DEVICE_LILYGO
+  // The T5 S3's shared buses are board-owned and the SDK does not bring them up:
+  // I2C (PCA9535 expander, TPS65185 EPD PMIC, GT911, battery gauge/charger) and
+  // the SD SPI bus, plus parking LoRa/GPS pins and the expander button hook.
+  // Must run before GPIO/input, storage, and the display's PMIC power hooks.
+  BoardT5S3::begin();
+  // Every route into deep sleep runs this last, while I2C is still alive. The
+  // panel PMIC hangs off the PCA9535 expander, whose output latches outlive the
+  // ESP's sleep and wake reset, so an unparked TPS65185 would draw all night.
+  // The display driver's own power-down is cached and can be skipped, and two
+  // early sleep paths in setup() run before the display is ever initialised.
+  freeink::PowerManager::setSleepParkHook([] { BoardT5S3::parkEpdPowerForSleep(); });
+#endif
   // checkPanic() clears the watchdog capture marker after a successful SD
   // dump, so retain the boot classification for the later activity route.
   const bool rebootedFromPanic = HalSystem::isRebootFromPanic();
@@ -1472,6 +1489,16 @@ void setup() {
     LOG_DBG("MAIN", "Power-button wake not held through verification, sleeping");
     powerManager.startDeepSleep(gpio);
   }
+#if FREEINK_DEVICE_LILYGO
+  // Not a wake anyone asked for: the last sleep found the power line still
+  // asserted when its (now bounded) release wait timed out, so instead of idling
+  // at ~25 mA it parked on a retry timer. Re-test and go straight back down;
+  // there is no one in front of the screen to show a boot to.
+  if (freeink::PowerManager::wokeFromStuckRetry()) {
+    LOG_DBG("MAIN", "Stuck power-line retry wake, sleeping again");
+    powerManager.startDeepSleep(gpio);
+  }
+#endif
 #endif
 
 #ifndef SIMULATOR
@@ -1997,14 +2024,32 @@ void loop() {
     lastMemPrint = millis();
   }
 
-  if (!buttonShortcutController.isQuickLocked() && UsbSerialFileTransfer::process(activityManager.isHomeActivity()) ==
-                                                       UsbSerialFileTransfer::ProcessResult::ScreenshotRequested) {
+  const auto serialResult = buttonShortcutController.isQuickLocked()
+                                ? UsbSerialFileTransfer::ProcessResult::None
+                                : UsbSerialFileTransfer::process(activityManager.isHomeActivity());
+  if (serialResult == UsbSerialFileTransfer::ProcessResult::ThemeRequested) {
+    // In-memory only (not saved): the next settings load restores the user's theme.
+    SETTINGS.uiTheme = static_cast<uint8_t>(UsbSerialFileTransfer::requestedTheme());
+    UITheme::getInstance().reload();
+    activityManager.goHome();
+    logSerial.printf("THEME_OK:%d\n", UsbSerialFileTransfer::requestedTheme());
+  }
+  if (serialResult == UsbSerialFileTransfer::ProcessResult::ScreenshotRequested) {
     RenderLock lock;
     const uint32_t bufferSize = display.getBufferSize();
+#if !defined(SIMULATOR) && LOG_SERIAL_HAS_TX_TIMEOUT
+    // The 1 ms TX timeout keeps logging from stalling the app, but on the S3's
+    // hardware USB-CDC (small FIFO) it drops most of a 64 KB frame. A host that
+    // asked for the dump is reading, so allow it to drain for this one write.
+    logSerial.setTxTimeoutMs(200);
+#endif
     logSerial.printf("SCREENSHOT_START:%d\n", bufferSize);
     uint8_t* buf = display.getFrameBuffer();
     logSerial.write(buf, bufferSize);
     logSerial.printf("SCREENSHOT_END\n");
+#if !defined(SIMULATOR) && LOG_SERIAL_HAS_TX_TIMEOUT
+    logSerial.setTxTimeoutMs(1);  // Restore the load-bearing 1 (see setup()).
+#endif
   }
 
   // Notify the active activity before global shortcut and gesture routes consume

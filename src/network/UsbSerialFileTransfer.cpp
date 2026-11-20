@@ -62,6 +62,7 @@ constexpr const char* HIDDEN_ITEMS[] = {"System Volume Information", "XTCache"};
 
 uint8_t commandMatchPos = 0;
 char lineBuffer[LINE_BUFFER_SIZE] = {};
+int lastRequestedTheme = 0;
 size_t lineBufferPos = 0;
 uint8_t transferBuffer[SERIAL_CHUNK_SIZE];
 // Set once per process() call from the caller's screen context; read by every command handler.
@@ -925,6 +926,17 @@ ProcessResult handleLine() {
   if (strcmp(lineBuffer, "CMD:SCREENSHOT") == 0) {
     return ProcessResult::ScreenshotRequested;
   }
+  constexpr char kThemePrefix[] = "CMD:THEME:";
+  if (strncmp(lineBuffer, kThemePrefix, sizeof(kThemePrefix) - 1) == 0) {
+    char* end = nullptr;
+    const long theme = strtol(lineBuffer + sizeof(kThemePrefix) - 1, &end, 10);
+    if (end != lineBuffer + sizeof(kThemePrefix) - 1 && *end == '\0' && theme >= 0 &&
+        theme < CrossPointSettings::UI_THEME_COUNT) {
+      lastRequestedTheme = static_cast<int>(theme);
+      return ProcessResult::ThemeRequested;
+    }
+    writeLine("ERR:bad_theme\n");
+  }
   return ProcessResult::None;
 }
 
@@ -1006,6 +1018,8 @@ int relaySyncHttp(void* context, const char* method, const char* endpoint, const
   }
   return status;
 }
+
+int requestedTheme() { return lastRequestedTheme; }
 
 void registerUsbCdcOverflowHandler() {
 #if defined(CROSSINK_USB_RX_OVERFLOW_ENABLED)
