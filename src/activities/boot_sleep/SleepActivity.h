@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "activities/Activity.h"
+#include "activities/reader/BookReadingStats.h"
 
 class Bitmap;
 
@@ -27,8 +28,20 @@ class SleepActivity final : public Activity {
   friend struct UpstreamFeatureSmokeTest;
 #endif
   void renderDefaultSleepScreen() const;
-  void renderCustomSleepScreen() const;
-  bool renderCustomSleepBmp(const std::string& path) const;
+  // Current-book info for the "Custom + Reading Strip" mode, loaded once before
+  // the image is drawn. The strip spans the screen width from `top`; a zero
+  // `height` means no strip (no book yet), so the image gets the full screen.
+  struct ReadingStrip {
+    int top = 0;
+    int height = 0;
+    BookReadingStats stats;
+    bool hasStats = false;
+    float progressPercent = -1.0f;
+    std::string chapterTitle;
+  };
+  void renderCustomSleepScreen(bool withReadingStrip = false) const;
+  bool renderCustomSleepBmp(const std::string& path, const ReadingStrip& strip) const;
+  ReadingStrip loadReadingStrip() const;
   void renderCoverSleepScreen() const;
   void renderReadingStatsSleepScreen() const;
   void renderMinimalSleepScreen() const;
@@ -38,9 +51,10 @@ class SleepActivity final : public Activity {
     int x, y, width, height;
     float cropX, cropY;
   };
-  BitmapPlacement prepareSleepBitmap(Bitmap& bitmap) const;
-  bool drawSleepBitmap(Bitmap& bitmap, const BitmapPlacement& placement) const;
-  bool renderBitmapSleepScreen(Bitmap& bitmap) const;
+  // `strip` (optional) reserves the bottom band and is drawn in the B/W pass.
+  BitmapPlacement prepareSleepBitmap(Bitmap& bitmap, const ReadingStrip* strip = nullptr) const;
+  bool drawSleepBitmap(Bitmap& bitmap, const BitmapPlacement& placement, const ReadingStrip* strip = nullptr) const;
+  bool renderBitmapSleepScreen(Bitmap& bitmap, const ReadingStrip* strip = nullptr) const;
   void renderLastScreenSleepScreen() const;
   void renderBlankSleepScreen() const;
   void renderOverlaySleepScreen(Bitmap* cover = nullptr) const;

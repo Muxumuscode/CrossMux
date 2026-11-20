@@ -8,6 +8,7 @@
 - On the T5, Dashboard Home has a row of shortcut icons at the bottom for Library, Saved Items, Reading Stats, File Transfer, and Settings, so they no longer need a swipe to reach.
 - On the T5, menus work with the side keys alone: tap BOOT to move up, tap IO48 to move down, and hold IO48 to select. On Dashboard Home the keys move across the shortcut icons. Holding BOOT still sleeps, and the Home key still goes back.
 - On the T5, pressing BOOT and IO48 together is an assignable combo (`BOOT + IO48 Combo`), taking a screenshot by default.
+- On the T5, a `Custom + Reading Strip` sleep screen fits your custom sleep image to the screen width at the top and adds a strip underneath with the current book's progress, time left, and chapter. X4-sized 480×800 images scale to exactly fill the space above the strip.
 - Developer serial command `CMD:THEME:<n>` switches the Home theme in memory for screenshots, plus T5 USB tools in `scripts/lilygo/`.
 
 ### Changed

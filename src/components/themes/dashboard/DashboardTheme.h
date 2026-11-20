@@ -45,6 +45,14 @@ class DashboardTheme : public MinimalTheme {
   // with its index as the id. `pressedIndex` (or -1) draws as highlighted.
   static void drawHomeDock(const GfxRenderer& renderer, const UIIcon* icons, int count, int pressedIndex);
 
+  // "Custom + Reading Strip" sleep screen: a white strip of current-book stat
+  // cells (Progress, Time Left, Chapter) under the custom image. 60 px lets an
+  // X4-sized 480x800 image scale to exactly 540x900 above it on the T5.
+  static constexpr int kSleepReadingStripHeight = 60;
+  // `stats` is null when reading stats are off for the book (Time Left hidden).
+  static void drawSleepReadingStrip(const GfxRenderer& renderer, const Rect& strip, const BookReadingStats* stats,
+                                    float progressPercent, const char* chapterTitle);
+
   static Rect getHomeCoverRect(const GfxRenderer& renderer);
   static Rect getSleepCoverRect(const GfxRenderer& renderer);
 

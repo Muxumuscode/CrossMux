@@ -369,6 +369,13 @@ inline SettingInfo buildSleepScreenSetting() {
       static_cast<uint8_t>(CrossPointSettings::DASHBOARD_SLEEP),
       static_cast<uint8_t>(CrossPointSettings::QUICK_RESUME),
   });
+  if (kTallPortraitScreen) {
+    // Custom images leave a band below them on the T5's taller screen.
+    constexpr size_t afterCustom = 4;  // BLANK, DARK, LIGHT, CUSTOM
+    s.enumValues.insert(s.enumValues.begin() + afterCustom, StrId::STR_CUSTOM_READING_STRIP);
+    s.enumRawValues.insert(s.enumRawValues.begin() + afterCustom,
+                           static_cast<uint8_t>(CrossPointSettings::CUSTOM_STRIP_SLEEP));
+  }
   return s;
 }
 

@@ -773,6 +773,49 @@ void DashboardTheme::drawHomeDock(const GfxRenderer& renderer, const UIIcon* ico
   }
 }
 
+void DashboardTheme::drawSleepReadingStrip(const GfxRenderer& renderer, const Rect& strip,
+                                           const BookReadingStats* stats, const float progressPercent,
+                                           const char* chapterTitle) {
+  renderer.fillRect(strip.x, strip.y, strip.width, strip.height, false);
+  renderer.drawLine(strip.x, strip.y, strip.x + strip.width - 1, strip.y, true);
+
+  char progress[8];
+  if (progressPercent >= 0.0f) {
+    snprintf(progress, sizeof(progress), "%d%%", static_cast<int>(progressPercent + 0.5f));
+  } else {
+    snprintf(progress, sizeof(progress), "-");
+  }
+  char timeLeft[24];
+  uint32_t secondsLeft = 0;
+  if (stats != nullptr && !stats->isCompleted && estimatedTimeLeft(*stats, progressPercent, secondsLeft)) {
+    formatCompactDuration(secondsLeft, timeLeft, sizeof(timeLeft));
+  } else {
+    snprintf(timeLeft, sizeof(timeLeft), "-");
+  }
+  const char* chapter = (chapterTitle != nullptr && chapterTitle[0] != '\0') ? chapterTitle : "-";
+
+  // Numbers get a quarter of the width each; the chapter name gets the rest.
+  // Without stats, Progress and Chapter split the strip.
+  const bool showTimeLeft = stats != nullptr;
+  const int numberW = strip.width / 4;
+  const int chapterW = strip.width - numberW * (showTimeLeft ? 2 : 1);
+  const int top = strip.y + std::max(0, (strip.height - totalsRowHeight(renderer)) / 2);
+  int x = strip.x;
+  drawCenteredStat(renderer, x + numberW / 2, top, numberW - kTotalsLabelPadding, progress, tr(STR_STATS_PROGRESS_LBL),
+                   true);
+  x += numberW;
+  if (showTimeLeft) {
+    drawCenteredStat(renderer, x + numberW / 2, top, numberW - kTotalsLabelPadding, timeLeft, tr(STR_TIME_LEFT_SHORT),
+                     true);
+    x += numberW;
+  }
+  // drawCenteredStat does not truncate the value; a chapter title can be long.
+  const auto visibleChapter =
+      renderer.truncatedText(UI_12_FONT_ID, chapter, chapterW - kTotalsLabelPadding, EpdFontFamily::BOLD);
+  drawCenteredStat(renderer, x + chapterW / 2, top, chapterW - kTotalsLabelPadding, visibleChapter.c_str(),
+                   tr(STR_CHAPTER), true);
+}
+
 Rect DashboardTheme::getHomeCoverRect(const GfxRenderer& renderer) {
   const auto& metrics = UITheme::getInstance().getMetrics();
   const auto safe = UITheme::getInstance().getScreenSafeArea(renderer, true, false);

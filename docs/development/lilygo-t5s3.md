@@ -96,6 +96,18 @@ reliable on the S3's USB CDC) and `CMD:THEME:<n>`.
 - **Windows build fix** in `scripts/git_branch.py` (pioarduino's include
   shortening wrapper ignores middleware patterns).
 
+## Sleep screen: Custom + Reading Strip
+
+`Settings > Display > Sleep Screen > Custom + Reading Strip` (tall screens only)
+draws the custom sleep image (same folder, pinning, and Fit/Crop setting as
+Custom) in the band above a 60 px strip, top-aligned, and fills the strip with
+the current book's Progress, Time Left, and Chapter
+(`DashboardTheme::drawSleepReadingStrip()`). A 480x800 X4 image scales to
+exactly 540x900. With no book opened yet the image gets the whole screen. The
+strip is drawn into the B/W base only; on the T5's overlay grayscale the gray
+passes leave its band blank. Converted images are cached per target size, so
+the strip mode and plain Custom keep separate cache files.
+
 ## Buttons
 
 The T5's case labels its keys **BOOT**, **IO48**, **PWR**, and **RST**, plus the
