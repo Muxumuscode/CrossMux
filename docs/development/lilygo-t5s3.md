@@ -48,7 +48,7 @@ both.
    The first build downloads ~2 GB of toolchains and compiles the custom ESP-IDF
    libraries (15-25 minutes). It will most likely **fail at the link step** with
    `No module named 'SCons.Tool.FortranCommon'`. That is a pioarduino version
-   clash, not a code problem. Fix it once:
+   clash, not a code problem (it happens on Linux too). Fix it once:
 
    ```powershell
    python scripts\lilygo\fix_pioarduino_scons.py C:\pio
@@ -106,4 +106,16 @@ reliable on the S3's USB CDC) and `CMD:THEME:<n>`.
   space below a 5-item menu.
 - OTA update checks still read uxjulia/CrossInk releases, which have no T5
   firmware; point them at this fork's releases or disable them for `lilygo`.
+- **Button names (priority).** Button settings still use the X4 Pro's front-button
+  names (Back/Confirm/Left/Right), so on the T5 it is unclear which key is which.
+  Show the names printed on the T5 instead. Today's wiring (SDK `BoardT5S3`,
+  `BoardConfig.h` `LILYGO_T5S3`): BOOT (GPIO0) is the power/sleep key; the user
+  key on the PCA9535 expander (IO12) reaches the app as `BTN_DOWN`; the S4 key
+  goes to the BQ25896 charger's /QON pin, not the ESP32; the Home key is
+  capacitive.
+- **RST button (priority).** RST drives the ESP32's EN (chip-enable) line, so it
+  is a hardware reset: firmware never sees the press and cannot disable it or
+  detect a long press. Reusing it would need a board change (rewiring RST to a
+  free GPIO or expander pin). Decide whether that is worth it, or leave RST as
+  reset.
 - Move to the final `v2.0.0` tag when CrossInk publishes it.
