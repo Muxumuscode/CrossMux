@@ -180,6 +180,10 @@ class ActivityManager {
   void goToReaderAndRunMenuAction(std::string path, uint8_t action);
   // Returns true only when sleep rendered a known complete B/W frame.
   bool goToSleep(bool fromTimeout = false);
+  // Developer aid (CMD:SLEEPPREVIEW): draw the sleep screen the way goToSleep()
+  // would, without leaving the current activity or sleeping, so it can be
+  // captured over USB. Go Home afterwards to redraw the normal UI.
+  void previewSleepScreen();
   void goToBoot();
   void goToFullScreenMessage(std::string message, EpdFontFamily::Style style = EpdFontFamily::REGULAR);
   void goToCrashReport();

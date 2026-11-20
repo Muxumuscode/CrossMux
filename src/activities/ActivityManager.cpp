@@ -1164,6 +1164,19 @@ void ActivityManager::goToReaderAndRunMenuAction(std::string path, const uint8_t
   goToReader(std::move(path));
 }
 
+void ActivityManager::previewSleepScreen() {
+  RenderLock lock;
+  auto sleepActivity = makeUniqueNoThrow<SleepActivity>(renderer, mappedInput, false, getCurrentBookPath(), false,
+                                                        renderer.getOrientation());
+  if (!sleepActivity) {
+    LOG_ERR("ACT", "Could not allocate sleep activity for preview");
+    return;
+  }
+  // Renders and pushes the sleep frame exactly as sleep would; nothing else in
+  // the sleep path (saves, plugins, deep sleep) runs.
+  sleepActivity->onEnter();
+}
+
 bool ActivityManager::goToSleep(bool fromTimeout) {
   // Hold the visible page steady from the first sleep indication through reader saves.
   RenderLock lock;

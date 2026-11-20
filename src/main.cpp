@@ -2061,6 +2061,10 @@ void loop() {
     activityManager.goHome();
     logSerial.printf("THEME_OK:%d\n", UsbSerialFileTransfer::requestedTheme());
   }
+  if (serialResult == UsbSerialFileTransfer::ProcessResult::SleepPreviewRequested) {
+    activityManager.previewSleepScreen();
+    logSerial.printf("SLEEPPREVIEW_OK\n");
+  }
   if (serialResult == UsbSerialFileTransfer::ProcessResult::ScreenshotRequested) {
     RenderLock lock;
     const uint32_t bufferSize = display.getBufferSize();

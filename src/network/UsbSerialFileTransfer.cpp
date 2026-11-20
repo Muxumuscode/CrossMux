@@ -926,6 +926,9 @@ ProcessResult handleLine() {
   if (strcmp(lineBuffer, "CMD:SCREENSHOT") == 0) {
     return ProcessResult::ScreenshotRequested;
   }
+  if (strcmp(lineBuffer, "CMD:SLEEPPREVIEW") == 0) {
+    return ProcessResult::SleepPreviewRequested;
+  }
   constexpr char kThemePrefix[] = "CMD:THEME:";
   if (strncmp(lineBuffer, kThemePrefix, sizeof(kThemePrefix) - 1) == 0) {
     char* end = nullptr;

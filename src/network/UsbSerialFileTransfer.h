@@ -15,6 +15,9 @@ enum class ProcessResult {
   // Developer aid: "CMD:THEME:<n>" asks for UI theme <n> (in memory only) and
   // a fresh Home, so every theme can be captured without touching the device.
   ThemeRequested,
+  // Developer aid: "CMD:SLEEPPREVIEW" draws the sleep screen without sleeping,
+  // so it can be captured with CMD:SCREENSHOT (USB is off once really asleep).
+  SleepPreviewRequested,
 };
 
 ProcessResult process(bool fileTransferAllowed);
