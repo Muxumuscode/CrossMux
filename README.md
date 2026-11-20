@@ -11,11 +11,19 @@
 
 - A `lilygo` build target for the T5-4.7 S3 Pro Lite: 540x960 16-gray e-paper, GT911 touch, capacitive Home key,
   frontlight, RTC, and battery gauge.
-- Home themes sized for the T5's taller screen, and a Dashboard with lifetime totals and a row of shortcut icons.
+- Home themes sized for the T5's taller screen, and a Dashboard with lifetime totals and a dock of shortcut icons
+  along the bottom (Library, Saved Items, Reading Stats, File Transfer, Settings).
+- Button-only navigation with the T5's two side keys: tap BOOT to move up, tap IO48 to move down, hold IO48 to
+  select. On Dashboard Home the keys move across the shortcut dock. Holding BOOT sleeps and the Home key goes back.
+- Controls and Quick Actions name the keys as printed on the case (BOOT, IO48). In books, BOOT pages back and IO48
+  pages forward by default, and pressing both together is an assignable combo (screenshot by default).
+- A `Custom + Reading Strip` sleep screen: your sleep image across the top, with the current book's progress,
+  time left, and chapter underneath.
 - T5 deep-sleep and frontlight fixes, carried in [Muxumuscode/freeink-sdk](https://github.com/Muxumuscode/freeink-sdk/tree/t5s3-hw-port) (`t5s3-hw-port`).
 - USB developer tools in `scripts/lilygo/`.
 
-Build and setup notes: [docs/development/lilygo-t5s3.md](./docs/development/lilygo-t5s3.md).
+Prebuilt firmware: [Releases](https://github.com/Muxumuscode/CrossMux/releases). Build and setup notes:
+[docs/development/lilygo-t5s3.md](./docs/development/lilygo-t5s3.md).
 
 ### Credits
 
