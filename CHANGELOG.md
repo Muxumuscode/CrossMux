@@ -4,7 +4,8 @@
 
 - LilyGo T5-4.7 S3 Pro Lite support (`pio run -e lilygo`): parallel e-paper panel, GT911 touch, capacitive Home key, frontlight, RTC, and battery gauge.
 - Home themes size their covers, cards, and menu rows for the T5's taller 540x960 screen; other devices keep their layouts.
-- On tall screens, the Dashboard Home and sleep screens add lifetime totals (books read, reading time, pages turned, longest streak) and a reading calendar of recent weeks.
+- On tall screens, the Dashboard Home and sleep screens add a row of lifetime totals (books read, reading time, pages turned, longest streak).
+- On the T5, Dashboard Home has a row of shortcut icons at the bottom for Library, Saved Items, Reading Stats, File Transfer, and Settings, so they no longer need a swipe to reach.
 - Developer serial command `CMD:THEME:<n>` switches the Home theme in memory for screenshots, plus T5 USB tools in `scripts/lilygo/`.
 
 ### Fixed

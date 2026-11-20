@@ -11,7 +11,7 @@
 
 - A `lilygo` build target for the T5-4.7 S3 Pro Lite: 540x960 16-gray e-paper, GT911 touch, capacitive Home key,
   frontlight, RTC, and battery gauge.
-- Home themes sized for the T5's taller screen, and a Dashboard with lifetime totals and a reading calendar.
+- Home themes sized for the T5's taller screen, and a Dashboard with lifetime totals and a row of shortcut icons.
 - T5 deep-sleep and frontlight fixes, carried in [Muxumuscode/freeink-sdk](https://github.com/Muxumuscode/freeink-sdk/tree/t5s3-hw-port) (`t5s3-hw-port`).
 - USB developer tools in `scripts/lilygo/`.
 

@@ -15,7 +15,7 @@ PCF8563 RTC, BQ27220/BQ25896 battery). It is based on CrossInk
 
 | Repo | Branch | What it holds |
 |---|---|---|
-| [Muxumuscode/CrossMux](https://github.com/Muxumuscode/CrossMux) (fork of uxjulia/CrossInk) | `feat/lilygo-t5s3-v2` | App: T5 build target, tall-screen theme sizing, Dashboard totals + reading calendar, sleep wiring, dev serial commands |
+| [Muxumuscode/CrossMux](https://github.com/Muxumuscode/CrossMux) (fork of uxjulia/CrossInk) | `feat/lilygo-t5s3-v2` | App: T5 build target, tall-screen theme sizing, Dashboard totals + shortcut dock, sleep wiring, dev serial commands |
 | [Muxumuscode/freeink-sdk](https://github.com/Muxumuscode/freeink-sdk) (fork of Free-Ink/freeink-sdk) | `t5s3-hw-port` | SDK: T5 hardware fixes ported from the [Aurora fork](https://github.com/jetaudio/crosspoint-aurora) (deep-sleep power, frontlight PWM, GPIO2) |
 
 The `freeink-sdk` submodule points at the SDK fork, so a recursive clone gets
@@ -88,8 +88,9 @@ reliable on the S3's USB CDC) and `CMD:THEME:<n>`.
 - **Tall-screen theme sizing**: `src/components/themes/TallScreen.h` provides
   `tallScreenValue(standard, tall)`; every Home theme uses it for its cover,
   tile, and row sizes. Other devices keep their original values.
-- **Dashboard extras** on screens taller than 800 px: a 2x2 lifetime totals
-  block and a reading-history calendar.
+- **Dashboard extras** on screens taller than 800 px: a row of lifetime totals.
+  On the T5 (tall + touch), Home also has a bottom dock of shortcut icons
+  (`DashboardTheme::drawHomeDock()`); the swipe gestures still work.
 - **Sleep**: the panel PMIC park hook, frontlight latched off, and a
   stuck-power-line retry wake (`src/main.cpp`, `lib/hal/HalPowerManager.cpp`).
 - **Windows build fix** in `scripts/git_branch.py` (pioarduino's include

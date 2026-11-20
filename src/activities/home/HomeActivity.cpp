@@ -279,6 +279,15 @@ HomeMenuEntries buildMinimalMenuItems(bool hasPlugins, bool hasReadingStats, boo
   return items;
 }
 
+// Dashboard's Home dock: the swipe-up menu's entries plus Settings, so every
+// screen reachable by a Home gesture also has a visible icon.
+HomeMenuEntries buildDashboardDockItems(bool hasPlugins, bool hasReadingStats, bool hasBookmarks, bool hasClippings) {
+  HomeMenuEntries items = buildMinimalMenuItems(hasPlugins, hasReadingStats, hasBookmarks, hasClippings);
+  items.push({tr(STR_SETTINGS_TITLE), Settings, HomeMenuAction::Settings});
+  return items;
+}
+static_assert(HomeMenuEntries::kCapacity <= DashboardTheme::kHomeDockMaxItems, "Dock icon buffer must fit every entry");
+
 HomeMenuEntries buildSelectableHomeMenuItems(bool hasPlugins, bool hasReadingStats, bool hasBookmarks,
                                              bool hasClippings, bool includeContinueReading) {
   HomeMenuEntries items;
@@ -325,6 +334,8 @@ bool isDashboardTheme() {
 }
 
 bool usesMinimalHomeInteraction() { return isMinimalTheme() || isDashboardTheme(); }
+
+bool showsDashboardHomeDock() { return DashboardTheme::hasHomeDock() && isDashboardTheme(); }
 
 bool showMinimalHomeButtonHints(const MappedInputManager& mappedInput) { return !mappedInput.hasTouch(); }
 
@@ -808,6 +819,7 @@ void HomeActivity::onEnter() {
   carouselCoverTouchDownIndex = -1;
   carouselCoverTouchDownWasSelected = false;
   carouselMenuTouchDownIndex = -1;
+  dashboardDockTouchDownIndex = -1;
   minimalMenuOpen = false;
   minimalSuppressInitialFrontRelease = usesMinimalHomeInteraction();
   backPressSeen = false;
@@ -1056,6 +1068,7 @@ void HomeActivity::onExit() {
 
   coverGridUi.reset();
   carouselMenuTouchDownIndex = -1;
+  dashboardDockTouchDownIndex = -1;
   freeCoverBuffer();
   gCarouselCache.invalidate();
   freeCarouselFrames();
@@ -1520,7 +1533,13 @@ void HomeActivity::loop() {
       return;
     }
 
-    switch (mappedInput.wasSwipe()) {
+    const auto swipe = mappedInput.wasSwipe();
+    if (swipe != MappedInputManager::SwipeDir::None && dashboardDockTouchDownIndex >= 0) {
+      // A swipe that began on a dock icon must not leave it highlighted.
+      dashboardDockTouchDownIndex = -1;
+      requestUpdate();
+    }
+    switch (swipe) {
       case MappedInputManager::SwipeDir::Down:
         minimalHomeNavIndex = 2;
         onSettingsOpen();
@@ -1593,6 +1612,57 @@ void HomeActivity::loop() {
           break;
       }
     };
+
+    // The dock registers its icons as touch Items, so it must claim Item
+    // touches before the front-button-hint handling below reads them as hints.
+    if (showsDashboardHomeDock()) {
+      const auto dockItems = buildDashboardDockItems(hasPlugins, hasReadingStats, hasBookmarks, hasClippings);
+      const int dockCount = dockItems.size();
+      int touchedDockIndex = -1;
+      if (mappedInput.wasItemTouchedDown(touchedDockIndex) && touchedDockIndex >= 0 && touchedDockIndex < dockCount) {
+        if (dashboardDockTouchDownIndex != touchedDockIndex) {
+          dashboardDockTouchDownIndex = touchedDockIndex;
+          requestUpdate();
+        }
+        return;
+      }
+      if (mappedInput.wasItemTapped(touchedDockIndex) && touchedDockIndex >= 0 && touchedDockIndex < dockCount) {
+        dashboardDockTouchDownIndex = -1;
+        switch (dockItems[touchedDockIndex].action) {
+          case HomeMenuAction::BrowseFiles:
+            onFileBrowserOpen();
+            break;
+          case HomeMenuAction::Library:
+            onLibraryOpen();
+            break;
+          case HomeMenuAction::Plugins:
+            onPluginsOpen();
+            break;
+          case HomeMenuAction::ReadingStats:
+            onReadingStatsOpen();
+            break;
+          case HomeMenuAction::Bookmarks:
+            onSavedItemsOpen();
+            break;
+          case HomeMenuAction::FileTransfer:
+            onFileTransferOpen();
+            break;
+          case HomeMenuAction::Settings:
+            onSettingsOpen();
+            break;
+          case HomeMenuAction::ContinueReading:
+            onContinueReading();
+            break;
+        }
+        return;
+      }
+      // A cancelled tap (finger slid off the icon) clears the highlight.
+      if (dashboardDockTouchDownIndex >= 0 && mappedInput.wasScreenTouchReleased()) {
+        dashboardDockTouchDownIndex = -1;
+        requestUpdate();
+        return;
+      }
+    }
 
     int touchedHomeNav = -1;
     if (mappedInput.wasItemTouchedDown(touchedHomeNav) && touchedHomeNav >= 0 && touchedHomeNav < homeNavCount) {
@@ -2108,6 +2178,15 @@ void HomeActivity::render(RenderLock&&) {
     const int homeNavCount = minimalHomeNavCount(!recentBooks.empty());
     if (minimalHomeNavIndex >= homeNavCount) {
       minimalHomeNavIndex = homeNavCount - 1;
+    }
+    if (showsDashboardHomeDock()) {
+      const auto dockItems = buildDashboardDockItems(hasPlugins, hasReadingStats, hasBookmarks, hasClippings);
+      std::array<UIIcon, DashboardTheme::kHomeDockMaxItems> dockIcons{};
+      const int dockCount = std::min(dockItems.size(), DashboardTheme::kHomeDockMaxItems);
+      for (int i = 0; i < dockCount; ++i) {
+        dockIcons[i] = dockItems[i].icon;
+      }
+      DashboardTheme::drawHomeDock(renderer, dockIcons.data(), dockCount, dashboardDockTouchDownIndex);
     }
     if (showMinimalHomeButtonHints(mappedInput)) {
       MinimalTheme::setHomeButtonHintSelection(minimalHomeNavIndex);

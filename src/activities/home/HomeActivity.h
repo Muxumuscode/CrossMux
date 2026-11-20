@@ -45,6 +45,8 @@ class HomeActivity final : public Activity {
   // Touch menus use a momentary pressed state. Keep it separate from the
   // keyboard selection so a returned Home screen cannot retain an icon tint.
   int carouselMenuTouchDownIndex = -1;
+  // Same momentary pressed state for the Dashboard Home dock (tall touch screens).
+  int dashboardDockTouchDownIndex = -1;
   bool recentsLoading = false;
   bool recentsLoaded = false;
   // Silent restarts keep the panel's previous frame. The first Home paint may

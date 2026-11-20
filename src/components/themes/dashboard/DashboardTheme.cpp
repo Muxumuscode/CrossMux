@@ -69,7 +69,8 @@ struct DashboardLayout {
   Rect footer;
 };
 
-DashboardLayout layoutForContent(const GfxRenderer& renderer, Rect content) {
+// Narrows `content` to Dashboard's left/right text columns.
+Rect insetHorizontally(const GfxRenderer& renderer, Rect content) {
   const auto edges = renderer.getViewableInsets().rotated(static_cast<unsigned>(renderer.getOrientation())).edges;
   const int inset = isWideScreen(renderer) ? kContentInsetX3 : kContentInsetX4;
   const int shift = (gpio.deviceIsX3() ? kPairInwardShiftX3 : 0) + kExtraContentInset;
@@ -78,6 +79,13 @@ DashboardLayout layoutForContent(const GfxRenderer& renderer, Rect content) {
       std::min(content.x + content.width, renderer.getScreenWidth() - std::max<int>(inset, edges[1])) - shift;
   content.x = left;
   content.width = std::max(0, right - left);
+  return content;
+}
+
+DashboardLayout layoutForContent(const GfxRenderer& renderer, Rect content,
+                                 const int footerBottomGap = kFooterBottomGap) {
+  content = insetHorizontally(renderer, content);
+  const int right = content.x + content.width;
   const int topInset = std::min(kTopInset, content.height);
   content.y += topInset;
   content.height -= topInset;
@@ -86,7 +94,7 @@ DashboardLayout layoutForContent(const GfxRenderer& renderer, Rect content) {
                                              : renderer.getLineHeight(UI_12_FONT_ID) + kStatsValueLabelGap +
                                                    renderer.getLineHeight(UI_10_FONT_ID);
   const int bottom = content.y + content.height;
-  const int footerCenter = std::max(content.y + footerH / 2, bottom - std::max(kFooterBottomGap, (footerH + 1) / 2));
+  const int footerCenter = std::max(content.y + footerH / 2, bottom - std::max(footerBottomGap, (footerH + 1) / 2));
   const Rect footer{content.x, footerCenter - footerH / 2, content.width, footerH};
   // Tracking can change while Home retains its cover buffer. Keep the artwork
   // geometry stable; disabling stats only hides the footer, not its reserved space.
@@ -587,8 +595,8 @@ void drawFooterStats(const GfxRenderer& renderer, const Rect& footer, const Glob
 }
 
 // Returns the y just below the last drawn line, so callers can lay out below it.
-int drawBookText(const GfxRenderer& renderer, const Rect& text, const RecentBook& book,
-                 const char* currentChapterTitle, const bool black = true) {
+int drawBookText(const GfxRenderer& renderer, const Rect& text, const RecentBook& book, const char* currentChapterTitle,
+                 const bool black = true) {
   const int textW = text.width;
   const char* title = book.title.empty() ? book.path.c_str() : book.title.c_str();
   auto titleLines = renderer.wrappedText(renderer.filenameFontId(UI_12_FONT_ID), title, textW, kBookTitleMaxLines,
@@ -618,37 +626,24 @@ int drawBookText(const GfxRenderer& renderer, const Rect& text, const RecentBook
 }
 
 // ---------------------------------------------------------------------------
-// Tall-screen extras: lifetime totals and a reading calendar.
+// Tall-screen extras: one row of lifetime totals.
 //
 // Screens taller than the X3/X4 (e.g. LilyGo T5 S3, 540x960) leave a band in
 // the text rect below the book title/chapter. Fill it from data already loaded
 // for Home (GlobalReadingStats), so this adds no SD reads. X3/X4 never reach
-// the height threshold, so their layout is unchanged. Totals take priority:
-// the calendar draws only when the band can hold it at a legible cell size.
+// the height threshold, so their layout is unchanged. The row is skipped when
+// a long title/chapter leaves too little room.
 // ---------------------------------------------------------------------------
 constexpr int kExtrasMinScreenHeight = 801;
 constexpr int kExtrasTopGap = 20;
 constexpr int kExtrasBottomGap = 16;  // Extra clearance above the footer.
-constexpr int kExtrasColumnGap = 20;  // Between the totals block and the calendar.
 constexpr int kTotalsCount = 4;
-constexpr int kTotalsGridColumns = 2;  // 2x2 block beside the calendar.
-constexpr int kTotalsGridWidth = 252;  // 126 px columns fit "Longest Streak" in SMALL.
-constexpr int kTotalsGridRowGap = 10;
 constexpr int kTotalsLabelPadding = 4;
-constexpr int kCalendarCellGap = 3;
-constexpr int kCalendarMinCell = 9;
-constexpr int kCalendarMaxCell = 15;
-constexpr int kCalendarDaysPerWeek = 7;
 
 // Labels use the stats column's SMALL font: the wider UI_10 footer font
 // truncates "Reading Time" / "Longest Streak" in a ~126 px column.
-int totalsCellHeight(const GfxRenderer& renderer) {
+int totalsRowHeight(const GfxRenderer& renderer) {
   return renderer.getLineHeight(UI_12_FONT_ID) + kStatsValueLabelGap + renderer.getLineHeight(SMALL_FONT_ID);
-}
-
-int totalsBlockHeight(const GfxRenderer& renderer, const int columns) {
-  const int rows = (kTotalsCount + columns - 1) / columns;
-  return rows * totalsCellHeight(renderer) + (rows - 1) * kTotalsGridRowGap;
 }
 
 void drawCenteredStat(const GfxRenderer& renderer, const int centerX, const int topY, const int maxW, const char* value,
@@ -661,9 +656,8 @@ void drawCenteredStat(const GfxRenderer& renderer, const int centerX, const int 
                     topY + renderer.getLineHeight(UI_12_FONT_ID) + kStatsValueLabelGap, visibleLabel.c_str(), black);
 }
 
-// Lays the four totals out as a grid with `columns` columns (4 = one row,
-// 2 = a 2x2 block).
-void drawLifetimeTotals(const GfxRenderer& renderer, const int x, const int width, const int topY, const int columns,
+// Lays the four totals out side by side in equal columns.
+void drawLifetimeTotals(const GfxRenderer& renderer, const int x, const int width, const int topY,
                         const GlobalReadingStats& stats, const bool black) {
   char booksRead[16];
   char readingTime[24];
@@ -677,82 +671,11 @@ void drawLifetimeTotals(const GfxRenderer& renderer, const int x, const int widt
   const char* values[kTotalsCount] = {booksRead, readingTime, pagesTurned, longestStreak};
   const char* labels[kTotalsCount] = {tr(STR_STATS_COMPLETED_LBL), tr(STR_STATS_TOTAL_READING_TIME_LBL_SHORT),
                                       tr(STR_STATS_PAGES_LBL), tr(STR_STATS_LONGEST_STREAK_LBL)};
-  const int columnW = width / columns;
-  const int rowPitch = totalsCellHeight(renderer) + kTotalsGridRowGap;
+  const int columnW = width / kTotalsCount;
   const int maxLabelW = std::max(1, columnW - kTotalsLabelPadding);
   for (int i = 0; i < kTotalsCount; ++i) {
-    const int col = i % columns;
-    const int row = i / columns;
-    drawCenteredStat(renderer, x + columnW * col + columnW / 2, topY + row * rowPitch, maxLabelW, values[i], labels[i],
-                     black);
+    drawCenteredStat(renderer, x + columnW * i + columnW / 2, topY, maxLabelW, values[i], labels[i], black);
   }
-}
-
-bool historyHasDay(const GlobalReadingStats& stats, const uint32_t dayIndex) {
-  // Bit k of the history records day (anchorDay - k); days after the anchor
-  // have not been read yet.
-  if (dayIndex > stats.readingHistoryAnchorDay) {
-    return false;
-  }
-  const uint32_t bitIndex = stats.readingHistoryAnchorDay - dayIndex;
-  if (bitIndex >= READING_HISTORY_DAYS) {
-    return false;
-  }
-  return (stats.readingHistoryBits[bitIndex / 8] & static_cast<uint8_t>(1u << (bitIndex % 8))) != 0;
-}
-
-// Draws a week-per-column grid (Monday at the top) ending with today's week,
-// right-aligned and vertically centred in the given box. Returns false without
-// drawing when the date is unknown or the box is too small for legible cells.
-bool drawReadingCalendar(const GfxRenderer& renderer, const int x, const int width, const int topY,
-                         const int availableH, const GlobalReadingStats& stats, const bool black) {
-  ReadingStatsDateTime now;
-  if (!getCurrentLocalReadingStatsDateTime(now)) {
-    return false;
-  }
-
-  const int cellFromHeight = (availableH - kCalendarCellGap * (kCalendarDaysPerWeek - 1)) / kCalendarDaysPerWeek;
-  const int cell = std::min(kCalendarMaxCell, cellFromHeight);
-  if (cell < kCalendarMinCell) {
-    return false;
-  }
-  const int pitch = cell + kCalendarCellGap;
-  const int weeks = (width + kCalendarCellGap) / pitch;
-  if (weeks <= 0) {
-    return false;
-  }
-
-  const int gridW = weeks * pitch - kCalendarCellGap;
-  const int gridH = kCalendarDaysPerWeek * pitch - kCalendarCellGap;
-  const int gridX = x + (width - gridW);
-  const int gridY = topY + std::max(0, (availableH - gridH) / 2);
-  const uint32_t today = readingStatsDayIndex(now.date);
-  const int todayRow = readingStatsDayOfWeekIndex(now.date);  // Monday = 0
-
-  for (int col = 0; col < weeks; ++col) {
-    const int weeksAgo = weeks - 1 - col;
-    for (int row = 0; row < kCalendarDaysPerWeek; ++row) {
-      const int daysAgo = weeksAgo * kCalendarDaysPerWeek + (todayRow - row);
-      if (daysAgo < 0) {
-        continue;  // Later this week: not happened yet.
-      }
-      if (static_cast<uint32_t>(daysAgo) > today) {
-        continue;
-      }
-      const int cellX = gridX + col * pitch;
-      const int cellY = gridY + row * pitch;
-      if (historyHasDay(stats, today - static_cast<uint32_t>(daysAgo))) {
-        renderer.fillRect(cellX, cellY, cell, cell, black);
-      } else {
-        renderer.drawRect(cellX, cellY, cell, cell, black);
-      }
-      if (daysAgo == 0) {
-        // Ring today's cell so it reads as "you are here" whether or not it is filled.
-        renderer.drawRect(cellX - 2, cellY - 2, cell + 4, cell + 4, black);
-      }
-    }
-  }
-  return true;
 }
 
 // `text` is the layout's text rect (title/chapter area that runs down to the
@@ -767,36 +690,94 @@ void drawTallScreenExtras(const GfxRenderer& renderer, const Rect& text, const i
   const int y = textBottomY + kExtrasTopGap;
   const int bandBottom = text.y + text.height - kExtrasBottomGap;
   const int bandH = bandBottom - y;
-
-  // Preferred: 2x2 totals on the left, reading calendar beside it at the same
-  // height. Both are centred in the band.
-  const int gridH = totalsBlockHeight(renderer, kTotalsGridColumns);
-  const int calendarX = x + kTotalsGridWidth + kExtrasColumnGap;
-  const int calendarW = width - kTotalsGridWidth - kExtrasColumnGap;
-  if (bandH >= gridH && calendarW > 0) {
-    const int top = y + (bandH - gridH) / 2;
-    if (drawReadingCalendar(renderer, calendarX, calendarW, top, gridH, *globalStats, black)) {
-      drawLifetimeTotals(renderer, x, kTotalsGridWidth, top, kTotalsGridColumns, *globalStats, black);
-      return;
-    }
-  }
-
-  // Fallback (long title/chapter, or no clock for the calendar): one full-width
-  // row of totals, which is the priority item.
-  const int rowH = totalsBlockHeight(renderer, kTotalsCount);
+  const int rowH = totalsRowHeight(renderer);
   if (bandH >= rowH) {
-    drawLifetimeTotals(renderer, x, width, y + (bandH - rowH) / 2, kTotalsCount, *globalStats, black);
+    drawLifetimeTotals(renderer, x, width, y + (bandH - rowH) / 2, *globalStats, black);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Home dock (DashboardTheme::hasHomeDock() only): a row of shortcut icons
+// anchored to the bottom of the safe area, with a hairline above it. Home's
+// content (cover, text, footer) is laid out in the space above it.
+// ---------------------------------------------------------------------------
+constexpr int kDockIconSize = 32;  // LyraTheme::iconForName() has these at 32 px.
+constexpr int kDockIconPad = 14;   // Tile height = 60, matching the Carousel strip.
+constexpr int kDockTileH = kDockIconPad + kDockIconSize + kDockIconPad;
+constexpr int kDockBottomGap = 10;
+constexpr int kDockTopGap = 8;            // Between Home content and the hairline.
+constexpr int kDockFooterBottomGap = 22;  // Footer centre above the content bottom.
+constexpr int kDockHighlightPad = 8;
+constexpr int kDockCornerRadius = 6;
+
+Rect homeDockRect(const GfxRenderer& renderer) {
+  const auto safe = UITheme::getInstance().getScreenSafeArea(renderer, true, false);
+  const Rect columns = insetHorizontally(renderer, safe);
+  return Rect{columns.x, safe.y + safe.height - kDockBottomGap - kDockTileH, columns.width, kDockTileH};
+}
+
+// Home's content rect for the requested tile, ending above the dock when shown.
+Rect homeContentRect(const GfxRenderer& renderer, const Rect& requested) {
+  Rect content = CalibratedThemeLayout::content(renderer, requested, true);
+  if (DashboardTheme::hasHomeDock()) {
+    const int dockTop = homeDockRect(renderer).y - kDockTopGap;
+    content.height = std::max(0, std::min(content.height, dockTop - content.y));
+  }
+  return content;
+}
+
+DashboardLayout homeLayout(const GfxRenderer& renderer, const Rect& requested) {
+  return layoutForContent(renderer, homeContentRect(renderer, requested),
+                          DashboardTheme::hasHomeDock() ? kDockFooterBottomGap : kFooterBottomGap);
+}
+
+// The bookmark ribbon has no 32 px bitmap; draw it the way the Carousel strip does.
+void drawDockBookmarkIcon(const GfxRenderer& renderer, const int x, const int y, const bool black) {
+  constexpr int ribbonWidth = 16;
+  constexpr int ribbonHeight = 22;
+  constexpr int notchSize = 6;
+  const int iconX = x + (kDockIconSize - ribbonWidth) / 2;
+  const int iconY = y + 4;
+  const int centerX = iconX + ribbonWidth / 2;
+  const int polyX[5] = {iconX, iconX + ribbonWidth, iconX + ribbonWidth, centerX, iconX};
+  const int polyY[5] = {iconY, iconY, iconY + ribbonHeight, iconY + ribbonHeight - notchSize, iconY + ribbonHeight};
+  renderer.fillPolygon(polyX, polyY, 5, black);
+}
 }  // namespace
+
+void DashboardTheme::drawHomeDock(const GfxRenderer& renderer, const UIIcon* icons, const int count,
+                                  const int pressedIndex) {
+  if (icons == nullptr || count <= 0) return;
+  const Rect dock = homeDockRect(renderer);
+  const int tileW = dock.width / count;
+  if (tileW <= 0) return;
+
+  renderer.drawLine(dock.x, dock.y, dock.x + dock.width - 1, dock.y, true);
+  for (int i = 0; i < count; ++i) {
+    const int tileX = dock.x + i * tileW;
+    const int iconX = tileX + (tileW - kDockIconSize) / 2;
+    const int iconY = dock.y + kDockIconPad;
+    const bool pressed = (i == pressedIndex);
+    if (pressed) {
+      const int size = kDockIconSize + 2 * kDockHighlightPad;
+      renderer.fillRoundedRect(iconX - kDockHighlightPad, iconY - kDockHighlightPad, size, size, kDockCornerRadius,
+                               Color::Black);
+    }
+    if (icons[i] == UIIcon::BookmarkIcon) {
+      drawDockBookmarkIcon(renderer, iconX, iconY, !pressed);
+    } else if (const freeink::Icon* bitmap = iconForName(icons[i], kDockIconSize)) {
+      drawLucideIcon(renderer, *bitmap, iconX, iconY, !pressed);
+    }
+    // The whole tile is the touch target, not just the 32 px icon.
+    TouchRegistry::getInstance().add(Rect{tileX, dock.y, tileW, dock.height + kDockBottomGap}, i, TouchRegistry::Item);
+  }
+}
 
 Rect DashboardTheme::getHomeCoverRect(const GfxRenderer& renderer) {
   const auto& metrics = UITheme::getInstance().getMetrics();
   const auto safe = UITheme::getInstance().getScreenSafeArea(renderer, true, false);
   const int top = metrics.homeTopPadding + UITheme::getHeaderRect(renderer, 0).y - metrics.topPadding;
-  return layoutForContent(renderer, CalibratedThemeLayout::content(
-                                        renderer, Rect{safe.x, top, safe.width, metrics.homeCoverTileHeight}, true))
-      .cover;
+  return homeLayout(renderer, Rect{safe.x, top, safe.width, metrics.homeCoverTileHeight}).cover;
 }
 
 Rect DashboardTheme::getSleepCoverRect(const GfxRenderer& renderer) {
@@ -812,7 +793,7 @@ void DashboardTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const
   (void)selectorIndex;
   (void)bufferRestored;
 
-  const auto layout = layoutForContent(renderer, CalibratedThemeLayout::content(renderer, rect, true));
+  const auto layout = homeLayout(renderer, rect);
   const Rect& coverRect = layout.cover;
   if (coverRect.width <= 0 || coverRect.height <= 0) return;
   if (recentBooks.empty()) {

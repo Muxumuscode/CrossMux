@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+#include "AppCapabilities.h"
 #include "components/themes/minimal/MinimalTheme.h"
 
 namespace DashboardMetrics {
@@ -34,6 +35,16 @@ constexpr int homeCoverImageHeight = 444;
 
 class DashboardTheme : public MinimalTheme {
  public:
+  // Tall touch screens (the LilyGo T5) show a row of shortcut icons at the
+  // bottom of Home, because they have no front-button hints. Compile-time, like
+  // TallScreen.h: Home's cover geometry (and so its cached thumbnail size)
+  // depends on whether the dock reserves space.
+  static constexpr bool hasHomeDock() { return kTallPortraitScreen && CROSSINK_APP_CAP_TOUCH; }
+  static constexpr int kHomeDockMaxItems = 8;
+  // Draws one icon tile per entry and registers each as TouchRegistry::Item
+  // with its index as the id. `pressedIndex` (or -1) draws as highlighted.
+  static void drawHomeDock(const GfxRenderer& renderer, const UIIcon* icons, int count, int pressedIndex);
+
   static Rect getHomeCoverRect(const GfxRenderer& renderer);
   static Rect getSleepCoverRect(const GfxRenderer& renderer);
 
