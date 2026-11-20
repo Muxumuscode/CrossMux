@@ -1,3 +1,38 @@
+# CrossMux
+
+> **CrossMux is my personal build of [CrossInk](https://github.com/uxjulia/CrossInk) for the LilyGo T5-4.7 S3 Pro Lite.**
+>
+> I love CrossInk. Its typography, reading stats, and attention to detail are why I wanted it on a bigger
+> screen, so this fork exists only to bring it to the LilyGo T5. It is not an official CrossInk release and is
+> not supported by the CrossInk or CrossPoint maintainers, so please don't report CrossMux issues to them.
+> Everything below the line is CrossInk's own README, kept as-is.
+
+### What CrossMux adds
+
+- A `lilygo` build target for the T5-4.7 S3 Pro Lite: 540x960 16-gray e-paper, GT911 touch, capacitive Home key,
+  frontlight, RTC, and battery gauge.
+- Home themes sized for the T5's taller screen, and a Dashboard with lifetime totals and a reading calendar.
+- T5 deep-sleep and frontlight fixes, carried in [Muxumuscode/freeink-sdk](https://github.com/Muxumuscode/freeink-sdk/tree/t5s3-hw-port) (`t5s3-hw-port`).
+- USB developer tools in `scripts/lilygo/`.
+
+Build and setup notes: [docs/development/lilygo-t5s3.md](./docs/development/lilygo-t5s3.md).
+
+### Credits
+
+CrossMux is a thin layer on top of a lot of other people's work. Thank you to:
+
+- **[Julia Nguyen (uxjulia)](https://github.com/uxjulia)** for [CrossInk](https://github.com/uxjulia/CrossInk), the reader this is all built on.
+- **[Dave Allie](https://github.com/daveallie)** and the [CrossPoint Reader](https://github.com/crosspoint-reader/crosspoint-reader) contributors, for the firmware CrossInk grew from.
+- **[jetaudio (Hoang Manh Linh)](https://github.com/jetaudio)** for [Aurora](https://github.com/jetaudio/crosspoint-aurora), the first CrossPoint port to the LilyGo T5 S3. The T5 deep-sleep power fixes, frontlight dimming, and board findings in CrossMux are ported from Aurora's work.
+- The **[FreeInk SDK](https://github.com/Free-Ink/freeink-sdk)** contributors, for the T5 S3 board support, display driver, and hardware layer.
+- **[ShallowGreen123](https://github.com/ShallowGreen123/t5s3-reader)** for the T5 S3 reference port the SDK's board support follows.
+- **[LovyanGFX](https://github.com/lovyan03/LovyanGFX)** and **[M5Stack's M5GFX](https://github.com/m5stack/M5GFX)**, which drive the T5's parallel e-paper panel.
+- **[LILYGO](https://github.com/Xinyuan-LilyGO)** for the T5 S3 hardware and its published schematics and examples.
+
+CrossMux keeps CrossInk's MIT license.
+
+---
+
 > **This is a personal fork of [CrossPoint Reader](https://github.com/crosspoint-reader/crosspoint-reader)** with a focus on improved fonts and minimal reading stats.
 
 ### Supported Devices
