@@ -18,6 +18,18 @@ inline constexpr bool deviceUsesGlobalTouchscreenLock() {
 #endif
 }
 
+// LilyGo T5: the only keys firmware can read are BOOT (BTN_POWER) and IO48
+// (delivered as BTN_DOWN); RST and PWR are hardware-only. Outside the reader the
+// pair navigates menus: BOOT tap = Up, IO48 tap = Down, IO48 hold = Confirm.
+// BOOT + IO48 together is the configurable "Power" chord instead of Power + Up.
+inline constexpr bool deviceUsesTwoKeyNavigation() {
+#if defined(FREEINK_DEVICE_LILYGO) && FREEINK_DEVICE_LILYGO
+  return true;
+#else
+  return false;
+#endif
+}
+
 inline bool deviceHasEdgeSideButtons(const HalGPIO& gpio) {
 #ifdef SIMULATOR
   return gpio.deviceIsX3();
@@ -52,6 +64,10 @@ inline bool deviceUsesSideButtonHintGutters(const HalGPIO& gpio) {
 inline bool deviceSupportsSideButtonChord(const HalGPIO& gpio) {
 #if FREEINK_DEVICE_EEGO_A4
   // EEGO reserves Up + Down for a hardware reset.
+  return false;
+#elif defined(FREEINK_DEVICE_LILYGO) && FREEINK_DEVICE_LILYGO
+  // The T5 has no Up key (see deviceUsesTwoKeyNavigation()).
+  (void)gpio;
   return false;
 #elif CROSSINK_APP_DEVICE_X4CLASSIC || defined(SIMULATOR_DEVICE_X4_CLASSIC)
   return true;

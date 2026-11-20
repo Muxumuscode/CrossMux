@@ -46,6 +46,8 @@ bool shouldSwapMenuFrontButtons(const GfxRenderer::Orientation orientation) {
 }
 
 bool shouldSwapReaderSideButtons(const bool readerMode) {
+  // A one-side-key device (T5) hides this setting: swapping would make IO48 page back.
+  if (deviceUsesTwoKeyNavigation()) return false;
   return readerMode && SETTINGS.sideButtonOrientationAware && SETTINGS.orientation != CrossPointSettings::PORTRAIT;
 }
 
@@ -132,6 +134,49 @@ void MappedInputManager::update() const {
   }
   if (!gpio.isPressed(HalGPIO::BTN_UP) && !gpio.wasReleased(HalGPIO::BTN_UP)) suppressPhysicalUpRelease = false;
   if (!gpio.isPressed(HalGPIO::BTN_DOWN) && !gpio.wasReleased(HalGPIO::BTN_DOWN)) suppressPhysicalDownRelease = false;
+  updateTwoKeyNavigation();
+}
+
+bool MappedInputManager::twoKeyNavigationActive() const { return deviceUsesTwoKeyNavigation() && !readerMode; }
+
+void MappedInputManager::updateTwoKeyNavigation() const {
+  twoKeyFrame = {};
+  if (!deviceUsesTwoKeyNavigation()) return;
+
+  const bool bootHeld = gpio.isPressed(HalGPIO::BTN_POWER);
+  const bool io48Held = gpio.isPressed(HalGPIO::BTN_DOWN);
+  if (bootHeld && io48Held) twoKeyChordSeen = true;
+
+  // IO48: a tap (released before the hold threshold) is Down; holding it is
+  // Confirm, fired once at the threshold so the user sees it act while held.
+  const uint32_t now = gpio.buttonSampleTime();
+  if (gpio.wasPressed(HalGPIO::BTN_DOWN)) {
+    twoKeyDownPressedAt = now;
+    twoKeyDownHoldFired = false;
+  }
+  if (io48Held && !twoKeyChordSeen && !twoKeyDownHoldFired && now - twoKeyDownPressedAt >= kTwoKeyConfirmHoldMs) {
+    twoKeyDownHoldFired = true;
+    twoKeyFrame.confirm = true;
+  }
+  if (gpio.wasReleased(HalGPIO::BTN_DOWN)) {
+    twoKeyFrame.down = !twoKeyDownHoldFired && !twoKeyChordSeen;
+    twoKeyDownHoldFired = false;
+  }
+
+  // BOOT: a short press is Up unless its configured short-Power action already
+  // runs outside the reader (the global dispatcher, or Home for File Browser and
+  // Quick Actions, owns it then). A long press stays the configured long-Power
+  // action (Sleep by default).
+  if (gpio.wasReleased(HalGPIO::BTN_POWER)) {
+    const auto shortAction = static_cast<CrossPointSettings::SHORT_PWRBTN>(SETTINGS.shortPwrBtn);
+    const bool shortActionRunsHere = isPowerButtonActionAvailableOutsideReader(shortAction) ||
+                                     shortAction == CrossPointSettings::SHORT_PWRBTN::FILE_BROWSER ||
+                                     shortAction == CrossPointSettings::SHORT_PWRBTN::QUICK_ACTIONS;
+    twoKeyFrame.up = !twoKeyChordSeen && !shortActionRunsHere &&
+                     gpio.getPowerButtonHeldTime() < SETTINGS.getPowerButtonLongPressDuration();
+  }
+
+  if (!bootHeld && !io48Held) twoKeyChordSeen = false;
 }
 
 void MappedInputManager::suppressNextFrontRelease(const Button button) {
@@ -298,7 +343,11 @@ uint8_t MappedInputManager::mappedFrontButtonFor(const Button button) const {
   }
 }
 
-bool MappedInputManager::shouldUsePowerAsConfirmFallback() const { return !readerMode || powerAsConfirmInReaderMode; }
+bool MappedInputManager::shouldUsePowerAsConfirmFallback() const {
+  // Two-key navigation makes BOOT (Power) Up outside the reader; IO48 hold confirms.
+  if (twoKeyNavigationActive()) return false;
+  return !readerMode || powerAsConfirmInReaderMode;
+}
 
 bool MappedInputManager::isFrontNavButtonSwapActive() const {
   const uint8_t context = navigationContext.load(std::memory_order_relaxed);
@@ -888,6 +937,12 @@ bool MappedInputManager::wasPressed(const Button button) const {
   }
 #endif
 
+  if (twoKeyNavigationActive()) {
+    if (button == Button::Up) return twoKeyFrame.up;
+    if (button == Button::Down) return twoKeyFrame.down;
+    if (button == Button::Confirm && twoKeyFrame.confirm) return true;
+  }
+
   if (button == Button::Confirm) {
     if (mapButton(button, &HalGPIO::wasPressed)) {
       return true;
@@ -930,6 +985,13 @@ bool MappedInputManager::wasReleased(const Button button) const {
 #else
   constexpr bool simulatedRelease = false;
 #endif
+
+  // Same one-loop events as wasPressed(): screens may act on either edge.
+  if (twoKeyNavigationActive()) {
+    if (button == Button::Up) return twoKeyFrame.up;
+    if (button == Button::Down) return twoKeyFrame.down;
+    if (button == Button::Confirm && twoKeyFrame.confirm) return true;
+  }
 
   if (button == Button::Back) {
     if (wasBackGesture()) {
@@ -1019,6 +1081,12 @@ bool MappedInputManager::isPressed(const Button button) const {
   if (suppressedSimulatedFrontReleases & (1u << static_cast<uint8_t>(button))) return false;
 #endif
   if (button == Button::Power && releaseSuppression.isPowerReleaseSuppressed()) {
+    return false;
+  }
+
+  // Two-key taps are one-loop events with no held state: holding IO48 means
+  // Confirm, not auto-repeating Down.
+  if (twoKeyNavigationActive() && (button == Button::Up || button == Button::Down)) {
     return false;
   }
 

@@ -820,6 +820,7 @@ void HomeActivity::onEnter() {
   carouselCoverTouchDownWasSelected = false;
   carouselMenuTouchDownIndex = -1;
   dashboardDockTouchDownIndex = -1;
+  dashboardDockSelectedIndex = -1;
   minimalMenuOpen = false;
   minimalSuppressInitialFrontRelease = usesMinimalHomeInteraction();
   backPressSeen = false;
@@ -1069,6 +1070,7 @@ void HomeActivity::onExit() {
   coverGridUi.reset();
   carouselMenuTouchDownIndex = -1;
   dashboardDockTouchDownIndex = -1;
+  dashboardDockSelectedIndex = -1;
   freeCoverBuffer();
   gCarouselCache.invalidate();
   freeCarouselFrames();
@@ -1578,7 +1580,8 @@ void HomeActivity::loop() {
 
     // Touch readers do not show the front-button hints, so retain their
     // existing side-button handling without moving the non-touch hint focus.
-    if (mappedInput.hasTouch()) {
+    // With the dock shown, the side keys walk the dock instead (below).
+    if (mappedInput.hasTouch() && !showsDashboardHomeDock()) {
       if (mappedInput.wasPressed(MappedInputManager::Button::Up)) {
         minimalHomeNavIndex = minimalHomeNavIndex < 0
                                   ? homeNavCount - 1
@@ -1618,17 +1621,10 @@ void HomeActivity::loop() {
     if (showsDashboardHomeDock()) {
       const auto dockItems = buildDashboardDockItems(hasPlugins, hasReadingStats, hasBookmarks, hasClippings);
       const int dockCount = dockItems.size();
-      int touchedDockIndex = -1;
-      if (mappedInput.wasItemTouchedDown(touchedDockIndex) && touchedDockIndex >= 0 && touchedDockIndex < dockCount) {
-        if (dashboardDockTouchDownIndex != touchedDockIndex) {
-          dashboardDockTouchDownIndex = touchedDockIndex;
-          requestUpdate();
-        }
-        return;
-      }
-      if (mappedInput.wasItemTapped(touchedDockIndex) && touchedDockIndex >= 0 && touchedDockIndex < dockCount) {
+      auto activateDockItem = [this, &dockItems](const int index) {
         dashboardDockTouchDownIndex = -1;
-        switch (dockItems[touchedDockIndex].action) {
+        dashboardDockSelectedIndex = -1;
+        switch (dockItems[index].action) {
           case HomeMenuAction::BrowseFiles:
             onFileBrowserOpen();
             break;
@@ -1654,6 +1650,40 @@ void HomeActivity::loop() {
             onContinueReading();
             break;
         }
+      };
+
+      int touchedDockIndex = -1;
+      if (mappedInput.wasItemTouchedDown(touchedDockIndex) && touchedDockIndex >= 0 && touchedDockIndex < dockCount) {
+        if (dashboardDockTouchDownIndex != touchedDockIndex) {
+          dashboardDockTouchDownIndex = touchedDockIndex;
+          requestUpdate();
+        }
+        return;
+      }
+      if (mappedInput.wasItemTapped(touchedDockIndex) && touchedDockIndex >= 0 && touchedDockIndex < dockCount) {
+        activateDockItem(touchedDockIndex);
+        return;
+      }
+
+      // Button-only use (the T5's BOOT = Up, IO48 = Down, hold IO48 = Confirm):
+      // Up/Down move a highlight across the dock; Confirm opens the highlighted
+      // icon, or continues reading when nothing is highlighted (below).
+      if (dockCount > 0 && mappedInput.wasPressed(MappedInputManager::Button::Up)) {
+        dashboardDockSelectedIndex = dashboardDockSelectedIndex < 0
+                                         ? dockCount - 1
+                                         : ButtonNavigator::previousIndex(dashboardDockSelectedIndex, dockCount);
+        requestUpdate();
+        return;
+      }
+      if (dockCount > 0 && mappedInput.wasPressed(MappedInputManager::Button::Down)) {
+        dashboardDockSelectedIndex =
+            dashboardDockSelectedIndex < 0 ? 0 : ButtonNavigator::nextIndex(dashboardDockSelectedIndex, dockCount);
+        requestUpdate();
+        return;
+      }
+      if (dashboardDockSelectedIndex >= dockCount) dashboardDockSelectedIndex = -1;
+      if (dashboardDockSelectedIndex >= 0 && mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+        activateDockItem(dashboardDockSelectedIndex);
         return;
       }
       // A cancelled tap (finger slid off the icon) clears the highlight.
@@ -2186,7 +2216,10 @@ void HomeActivity::render(RenderLock&&) {
       for (int i = 0; i < dockCount; ++i) {
         dockIcons[i] = dockItems[i].icon;
       }
-      DashboardTheme::drawHomeDock(renderer, dockIcons.data(), dockCount, dashboardDockTouchDownIndex);
+      // A finger on an icon wins over the button highlight.
+      const int highlighted =
+          dashboardDockTouchDownIndex >= 0 ? dashboardDockTouchDownIndex : dashboardDockSelectedIndex;
+      DashboardTheme::drawHomeDock(renderer, dockIcons.data(), dockCount, highlighted);
     }
     if (showMinimalHomeButtonHints(mappedInput)) {
       MinimalTheme::setHomeButtonHintSelection(minimalHomeNavIndex);

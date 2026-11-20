@@ -286,6 +286,21 @@ class MappedInputManager {
   std::atomic<uint8_t> navigationContext{0};
   uint8_t menuOrientation() const { return navigationContext.load(std::memory_order_relaxed) & (MENU_MODE - 1); }
   bool powerAsConfirmInReaderMode = false;
+  // Two-key menu navigation (deviceUsesTwoKeyNavigation(), the LilyGo T5):
+  // update() turns BOOT/IO48 edges into one-loop Up/Down/Confirm events.
+  // Taps fire on release so a hold can mean something else.
+  struct TwoKeyFrame {
+    bool up = false;
+    bool down = false;
+    bool confirm = false;
+  };
+  static constexpr uint32_t kTwoKeyConfirmHoldMs = 600;
+  mutable TwoKeyFrame twoKeyFrame;
+  mutable uint32_t twoKeyDownPressedAt = 0;
+  mutable bool twoKeyDownHoldFired = false;
+  mutable bool twoKeyChordSeen = false;  // BOOT + IO48 overlapped: no taps until both are up
+  bool twoKeyNavigationActive() const;
+  void updateTwoKeyNavigation() const;
 #if CROSSINK_APP_CAP_TOUCH
   bool usesFrontlightSwipeLayout() const;
   bool readerTouchscreenOverride = false;

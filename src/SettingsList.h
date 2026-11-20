@@ -16,6 +16,7 @@
 #include <utility>
 #include <vector>
 
+#include "ButtonNames.h"
 #include "CrossPointSettings.h"
 #include "DeviceCapabilities.h"
 #include "KOReaderCredentialStore.h"
@@ -949,11 +950,11 @@ inline std::vector<SettingInfo> buildControlsSettingsParentList(const std::vecto
   if (hasHomeKey) {
     settings.push_back(SettingInfo::Submenu(StrId::STR_HOME_BUTTON, SettingAction::ControlsHomeButton));
   }
-  settings.push_back(SettingInfo::Submenu(StrId::STR_POWER_BUTTON, SettingAction::ControlsPowerButton));
+  settings.push_back(SettingInfo::Submenu(powerButtonNameId(), SettingAction::ControlsPowerButton));
   if (hasFrontButtons) {
     settings.push_back(SettingInfo::Submenu(StrId::STR_FRONT_BUTTONS, SettingAction::ControlsFrontButtons));
   }
-  settings.push_back(SettingInfo::Submenu(StrId::STR_SIDE_BUTTONS, SettingAction::ControlsSideButtons));
+  settings.push_back(SettingInfo::Submenu(sideButtonsNameId(), SettingAction::ControlsSideButtons));
   settings.push_back(SettingInfo::Action(StrId::STR_QUICK_ACTIONS, SettingAction::QuickActions));
   if (hasTapsGestures) {
     settings.push_back(SettingInfo::Submenu(StrId::STR_TAPS_AND_GESTURES, SettingAction::ControlsTapsGestures));
@@ -1035,7 +1036,7 @@ inline std::vector<SettingInfo> buildControlsPowerSettingsList(const std::vector
       SETTINGS.longPressBackAction == CrossPointSettings::LONG_PRESS_MENU_ACTION::LONG_MENU_FOOTNOTES) {
     addSettingByName(settings, allSettings, StrId::STR_PWR_BTN_FOOTNOTE_BACK);
   }
-  addSettingByName(settings, allSettings, StrId::STR_POWER_BUTTON_CHORD);
+  addSettingByName(settings, allSettings, powerChordNameId());
   return settings;
 }
 
@@ -1055,6 +1056,14 @@ inline std::vector<SettingInfo> buildControlsFrontButtonSettingsList(const std::
 
 inline std::vector<SettingInfo> buildControlsSideButtonSettingsList(const std::vector<SettingInfo>& allSettings) {
   std::vector<SettingInfo> settings;
+  if (deviceUsesTwoKeyNavigation()) {
+    // IO48 is the T5's only side key, delivered as Down: no Up section, no
+    // orientation swap (it would turn IO48 into Up), no Up + Down chord.
+    settings.reserve(2);
+    addSettingByKey(settings, allSettings, "sideButtonDownShort");
+    addSettingByKey(settings, allSettings, "sideButtonDownLong");
+    return settings;
+  }
   const bool hasChord = hasSideButtonChordSetting(allSettings);
   settings.reserve(8 + (hasChord ? 1u : 0u));
   addSettingByKey(settings, allSettings, "sideButtonOrientationAware");

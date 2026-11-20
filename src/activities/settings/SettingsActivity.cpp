@@ -18,6 +18,7 @@
 #include "AppCapabilities.h"
 #include "AppVersion.h"
 #include "BackupStatsActivity.h"
+#include "ButtonNames.h"
 #include "ButtonRemapActivity.h"
 #include "ClearCacheActivity.h"
 #include "ClockOffsetActivity.h"
@@ -531,13 +532,13 @@ StrId SettingsActivity::activeSubmenuTitleId() const {
     case SettingAction::ScreenMargin:
       return StrId::STR_SCREEN_MARGIN;
     case SettingAction::ControlsPowerButton:
-      return StrId::STR_POWER_BUTTON;
+      return powerButtonNameId();
     case SettingAction::ControlsHomeButton:
       return StrId::STR_HOME_BUTTON;
     case SettingAction::ControlsFrontButtons:
       return StrId::STR_FRONT_BUTTONS;
     case SettingAction::ControlsSideButtons:
-      return StrId::STR_SIDE_BUTTONS;
+      return sideButtonsNameId();
     case SettingAction::ControlsTapsGestures:
       return StrId::STR_TAPS_AND_GESTURES;
     case SettingAction::ControlsTwoFingerSwipe:

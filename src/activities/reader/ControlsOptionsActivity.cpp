@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <iterator>
 
+#include "ButtonNames.h"
 #include "CrossPointSettings.h"
 #include "MappedInputManager.h"
 #include "QuickActions.h"
@@ -149,13 +150,13 @@ void ControlsOptionsActivity::setCurrentSettings() {
 StrId ControlsOptionsActivity::activeSubmenuTitleId() const {
   switch (activeSubmenu) {
     case SettingAction::ControlsPowerButton:
-      return StrId::STR_POWER_BUTTON;
+      return powerButtonNameId();
     case SettingAction::ControlsHomeButton:
       return StrId::STR_HOME_BUTTON;
     case SettingAction::ControlsFrontButtons:
       return StrId::STR_FRONT_BUTTONS;
     case SettingAction::ControlsSideButtons:
-      return StrId::STR_SIDE_BUTTONS;
+      return sideButtonsNameId();
     case SettingAction::ControlsTapsGestures:
       return StrId::STR_TAPS_AND_GESTURES;
     case SettingAction::ControlsTwoFingerSwipe:

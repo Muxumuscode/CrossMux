@@ -6,7 +6,13 @@
 - Home themes size their covers, cards, and menu rows for the T5's taller 540x960 screen; other devices keep their layouts.
 - On tall screens, the Dashboard Home and sleep screens add a row of lifetime totals (books read, reading time, pages turned, longest streak).
 - On the T5, Dashboard Home has a row of shortcut icons at the bottom for Library, Saved Items, Reading Stats, File Transfer, and Settings, so they no longer need a swipe to reach.
+- On the T5, menus work with the side keys alone: tap BOOT to move up, tap IO48 to move down, and hold IO48 to select. On Dashboard Home the keys move across the shortcut icons. Holding BOOT still sleeps, and the Home key still goes back.
+- On the T5, pressing BOOT and IO48 together is an assignable combo (`BOOT + IO48 Combo`), taking a screenshot by default.
 - Developer serial command `CMD:THEME:<n>` switches the Home theme in memory for screenshots, plus T5 USB tools in `scripts/lilygo/`.
+
+### Changed
+
+- On the T5, Controls and Quick Actions name the keys as printed on the case (BOOT, IO48) and no longer list settings for a side key the T5 doesn't have. New T5 installs default BOOT's tap to Previous Page in books, so BOOT pages back and IO48 pages forward.
 
 ### Fixed
 

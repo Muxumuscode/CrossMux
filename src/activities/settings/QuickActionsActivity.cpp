@@ -7,17 +7,18 @@
 #include <iterator>
 
 #include "AppCapabilities.h"
+#include "ButtonNames.h"
 #include "CrossPointSettings.h"
 #include "DeviceCapabilities.h"
 #include "QuickActions.h"
 
 namespace {
 constexpr StrId triggerLabels[] = {StrId::STR_NONE_OPT,
-                                   StrId::STR_SHORT_PRESS_POWER,
-                                   StrId::STR_LONG_PRESS_POWER,
+                                   shortPressPowerNameId(),
+                                   longPressPowerNameId(),
                                    StrId::STR_LONG_PRESS_BACK_ACTION,
                                    StrId::STR_LONG_PRESS_MENU_ACTION,
-                                   StrId::STR_POWER_BUTTON_CHORD,
+                                   powerChordNameId(),
                                    StrId::STR_TAP_HOME_SHORTCUT,
                                    StrId::STR_LONG_PRESS_HOME_SHORTCUT,
                                    StrId::STR_DOUBLE_TAP_HOME_SHORTCUT,
@@ -32,6 +33,10 @@ std::string triggerLabel(const QuickActions::Trigger trigger) {
            tr(STR_LONG_PRESS_ACTION);
   const bool up = trigger == QuickActions::Trigger::SideUpShort || trigger == QuickActions::Trigger::SideUpLong;
   const bool longPress = trigger == QuickActions::Trigger::SideUpLong || trigger == QuickActions::Trigger::SideDownLong;
+  if (deviceUsesTwoKeyNavigation()) {
+    // IO48 is the T5's only side key.
+    return std::string(tr(STR_IO48_BUTTON)) + " " + (longPress ? tr(STR_LONG_PRESS_ACTION) : tr(STR_SHORT_PWR_BTN));
+  }
   return std::string(up ? tr(STR_DIR_LEFT) : tr(STR_DIR_RIGHT)) + "/" + (up ? tr(STR_DIR_UP) : tr(STR_DIR_DOWN)) + " " +
          (longPress ? tr(STR_LONG_PRESS_ACTION) : tr(STR_SHORT_PWR_BTN));
 }
@@ -44,8 +49,10 @@ std::vector<QuickActions::Trigger> availableTriggers() {
     triggers.push_back(QuickActions::Trigger::UpDown);
   }
 #endif
-  triggers.push_back(QuickActions::Trigger::SideUpShort);
-  triggers.push_back(QuickActions::Trigger::SideUpLong);
+  if (!deviceUsesTwoKeyNavigation()) {  // the T5 has no Up key
+    triggers.push_back(QuickActions::Trigger::SideUpShort);
+    triggers.push_back(QuickActions::Trigger::SideUpLong);
+  }
   triggers.push_back(QuickActions::Trigger::SideDownShort);
   triggers.push_back(QuickActions::Trigger::SideDownLong);
   if (deviceHasFrontButtons()) {

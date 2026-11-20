@@ -2089,15 +2089,19 @@ void loop() {
   // Keep Power + Down screenshot-only. The configurable chord below uses Up,
   // so it cannot replace or double-fire this one. The controller consumes both
   // release orders even when an open modal blocks the screenshot itself.
-  const bool screenshotActionBlocked = modalOwnsInput || buttonShortcutController.isQuickLocked();
-  const auto screenshotChordResult = buttonShortcutController.updatePowerDown(
-      gpio.isPressed(HalGPIO::BTN_POWER), gpio.isPressed(HalGPIO::BTN_DOWN), screenshotActionBlocked);
-  if (screenshotChordResult.event == ButtonShortcutController::Event::Screenshot) {
-    RenderLock lock;
-    ScreenshotUtil::takeScreenshot(renderer);
-  }
-  if (screenshotChordResult.consumeInput) {
-    return;
+  // Two-key devices (LilyGo T5) have no Up key: BOOT + IO48 is the configurable
+  // chord below instead, so this fixed one is skipped there.
+  if (!deviceUsesTwoKeyNavigation()) {
+    const bool screenshotActionBlocked = modalOwnsInput || buttonShortcutController.isQuickLocked();
+    const auto screenshotChordResult = buttonShortcutController.updatePowerDown(
+        gpio.isPressed(HalGPIO::BTN_POWER), gpio.isPressed(HalGPIO::BTN_DOWN), screenshotActionBlocked);
+    if (screenshotChordResult.event == ButtonShortcutController::Event::Screenshot) {
+      RenderLock lock;
+      ScreenshotUtil::takeScreenshot(renderer);
+    }
+    if (screenshotChordResult.consumeInput) {
+      return;
+    }
   }
 
 #if !FREEINK_DEVICE_EEGO_A4
@@ -2114,7 +2118,7 @@ void loop() {
 #endif
 
   const bool powerPressed = gpio.isPressed(HalGPIO::BTN_POWER);
-  const bool chordButtonPressed = gpio.isPressed(HalGPIO::BTN_UP);
+  const bool chordButtonPressed = gpio.isPressed(deviceUsesTwoKeyNavigation() ? HalGPIO::BTN_DOWN : HalGPIO::BTN_UP);
   const bool shortPowerRelease = gpio.wasReleased(HalGPIO::BTN_POWER) &&
                                  gpio.getPowerButtonHeldTime() < SETTINGS.getPowerButtonLongPressDuration();
   const bool quickLockOnShortPower =

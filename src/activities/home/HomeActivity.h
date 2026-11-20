@@ -47,6 +47,8 @@ class HomeActivity final : public Activity {
   int carouselMenuTouchDownIndex = -1;
   // Same momentary pressed state for the Dashboard Home dock (tall touch screens).
   int dashboardDockTouchDownIndex = -1;
+  // Dock icon highlighted by button navigation (-1 = none).
+  int dashboardDockSelectedIndex = -1;
   bool recentsLoading = false;
   bool recentsLoaded = false;
   // Silent restarts keep the panel's previous frame. The first Home paint may

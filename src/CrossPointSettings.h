@@ -543,13 +543,25 @@ class CrossPointSettings : public PersistableStore<CrossPointSettings> {
   uint8_t leftEdgeDown = TWO_FINGER_SWIPE_NOT_SET;
   uint8_t rightEdgeUp = TWO_FINGER_SWIPE_NOT_SET;
   uint8_t rightEdgeDown = TWO_FINGER_SWIPE_NOT_SET;
+#if defined(FREEINK_DEVICE_LILYGO) && FREEINK_DEVICE_LILYGO
+  // LilyGo T5: BOOT is the power key and IO48 the only side key (Next Page), so
+  // BOOT's tap pages back in books. Outside books it is Up (MappedInputManager).
+  uint8_t shortPwrBtn = PREVIOUS_PAGE;
+#else
   // Short power button action behaviour
   uint8_t shortPwrBtn = IGNORE;
+#endif
   // Long power button action behaviour
   uint8_t longPwrBtn = SLEEP;
+#if defined(FREEINK_DEVICE_LILYGO) && FREEINK_DEVICE_LILYGO
+  // BOOT + IO48 on the T5 (no Up key). It replaces the fixed Power + Down
+  // screenshot chord there, so it defaults to Screenshot.
+  uint8_t powerChordAction = CHORD_SCREENSHOT;
+#else
   // Power + Up shortcut action. Disabled by default so the established
   // Power + Down screenshot chord remains screenshot-only.
   uint8_t powerChordAction = CHORD_DISABLED;
+#endif
   // Up + Down shortcut action. On touch hardware, while the reader touchscreen
   // is disabled, this chord instead opens Settings as the recovery route.
   uint8_t sideButtonChordAction = CHORD_DISABLED;

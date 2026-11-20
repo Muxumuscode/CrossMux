@@ -96,6 +96,28 @@ reliable on the S3's USB CDC) and `CMD:THEME:<n>`.
 - **Windows build fix** in `scripts/git_branch.py` (pioarduino's include
   shortening wrapper ignores middleware patterns).
 
+## Buttons
+
+The T5's case labels its keys **BOOT**, **IO48**, **PWR**, and **RST**, plus the
+capacitive Home key. Only BOOT and IO48 reach the firmware:
+
+| Key | Wiring | In books | Elsewhere |
+|---|---|---|---|
+| BOOT | GPIO0, the app's power key (`BTN_POWER`) | Tap: Previous Page (default); hold: Sleep/Wake | Tap: Up; hold: Sleep/Wake |
+| IO48 | PCA9535 IO12 via the board's button hook, delivered as `BTN_DOWN` | Tap: Next Page | Tap: Down; hold 0.6 s: Select |
+| BOOT + IO48 | Both together | Configurable combo, Screenshot by default | Same |
+| Home | GT911 capacitive key | Configurable (Back/Home by default) | Back/Home |
+| PWR | BQ25896 charger /QON, not the ESP32 | Hardware only: a long hold forces a power reset | Same |
+| RST | ESP32 EN line | Hardware reset; kept as is | Same |
+
+Implementation: `deviceUsesTwoKeyNavigation()` (`include/DeviceCapabilities.h`)
+gates it; `MappedInputManager::updateTwoKeyNavigation()` turns BOOT/IO48 into
+one-loop Up/Down/Confirm events outside the reader (taps fire on release, so
+holds can mean something else); `src/main.cpp` uses IO48 as the configurable
+chord's partner and skips the fixed Power + Down screenshot chord;
+`src/ButtonNames.h` supplies the BOOT/IO48 labels. On Dashboard Home the keys
+move a highlight across the dock. Reader menus still use the reader mapping.
+
 ## Open items
 
 - Text-quality check of upstream's T5 waveform on the glass. Aurora's own
@@ -106,30 +128,4 @@ reliable on the S3's USB CDC) and `CMD:THEME:<n>`.
   space below a 5-item menu.
 - OTA update checks still read uxjulia/CrossInk releases, which have no T5
   firmware; point them at this fork's releases or disable them for `lilygo`.
-- **Button names (priority).** Controls settings still use the X4 Pro's names
-  ("Power Button", "Side Buttons" with Left/Right sections, "Power + Up Combo"),
-  so on the T5 it is unclear which key is which. Use the labels printed on the
-  case: **BOOT**, **IO48**, **PWR**, **RST**, plus the capacitive Home key.
-  Wiring (SDK `BoardT5S3`, `BoardConfig.h` `LILYGO_T5S3`):
-  - BOOT (GPIO0): the app's power key (sleep/wake and power-button actions).
-  - IO48: read through the PCA9535 expander (its IO12) and delivered as
-    `BTN_DOWN`, so it is the "Right" side-button section today. The case says
-    IO48, but GPIO48 is a display line on this board; confirm on hardware that
-    the key responds.
-  - PWR: wired to the BQ25896 charger's /QON pin, not the ESP32. Firmware cannot
-    read it; it only powers the board on.
-  - RST: the ESP32's EN line, a hardware reset. Keep it as reset (decided).
-  Plan: on `lilygo`, rename "Power Button" to BOOT and "Side Buttons" to IO48,
-  show only the IO48 short/long actions, hide the settings that need a key the
-  T5 lacks (the Up side key and its chords), and use BOOT in power-on hints.
-  Defaults on `lilygo` (decided): BOOT short press = Previous Page, BOOT long
-  press = Sleep/Wake, IO48 short press = Next Page. Both actions already exist
-  (`SHORT_PWRBTN::PREVIOUS_PAGE`, `sideButtonDownShort = PAGE_TURN`); only the
-  T5's default for `shortPwrBtn` changes.
-  Combo: BOOT + IO48 together is today a fixed Screenshot chord (Power + Down,
-  `src/main.cpp` `updatePowerDown`). The configurable "Power + Up Combo" can't
-  fire on the T5 (no Up key). On `lilygo`, make the configurable combo use
-  BOOT + IO48 (`chordButtonPressed` reads `BTN_DOWN`), skip the fixed screenshot
-  chord, default the combo to Screenshot (`CHORD_SCREENSHOT`) so nothing is
-  lost, and label it "BOOT + IO48 Combo".
 - Move to the final `v2.0.0` tag when CrossInk publishes it.
