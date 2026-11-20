@@ -2,12 +2,14 @@
 
 #include <Bitmap.h>
 #include <Epub.h>
+#include <FontCacheManager.h>
 #include <FsHelpers.h>
 #include <GfxRenderer.h>
 #include <HalClock.h>
 #include <HalGPIO.h>
 #include <HalStorage.h>
 #include <I18n.h>
+#include <Logging.h>
 #include <Xtc.h>
 
 #include <algorithm>
@@ -774,20 +776,24 @@ void DashboardTheme::drawHomeDock(const GfxRenderer& renderer, const UIIcon* ico
 }
 
 namespace {
-constexpr int kSleepStripSidePadding = 16;
-constexpr int kSleepStripRowGap = 2;
-constexpr int kSleepStripTitleChapterGap = 16;
-constexpr char kSleepStripSeparator[] = " \xC2\xB7 ";  // " · "
+// The strip is 60 px (480x800 images stay flush at 540x900). One line of text in
+// the largest built-in face that fits above the bar: Lexend Deca 16 where it fits,
+// falling back to 14, then the UI font.
+constexpr int kSleepStripSidePadding = 12;
+constexpr int kSleepStripBarHeight = 6;
+// The T5 panel is recessed: its last few rows sit in the bezel's shadow, so
+// the bar is lifted clear of the bottom edge.
+constexpr int kSleepStripBarLift = 6;
+constexpr int kSleepStripItemGap = 16;   // between items in the right-hand group
+constexpr int kSleepStripTitleGap = 20;  // minimum space between the title and the group
+constexpr int kSleepStripIconGap = 4;    // flame icon to its number
+constexpr int kSleepStripIconSize = 24;
 
-// Appends `item` to `line` (with a separator) if the result still fits `maxW`.
-// Returns false once an item doesn't fit, so callers stop at the first drop and
-// the remaining items keep their priority order.
-bool appendIfFits(const GfxRenderer& renderer, std::string& line, const char* item, const int maxW) {
-  if (item == nullptr || item[0] == '\0') return true;
-  std::string candidate = line.empty() ? std::string(item) : line + kSleepStripSeparator + item;
-  if (renderer.getTextWidth(SMALL_FONT_ID, candidate.c_str()) > maxW) return false;
-  line = std::move(candidate);
-  return true;
+int pickSleepStripFont(const GfxRenderer& renderer, const int textAreaH) {
+  for (const int fontId : {LEXENDDECA_16_FONT_ID, LEXENDDECA_14_FONT_ID}) {
+    if (renderer.getLineHeight(fontId) <= textAreaH) return fontId;
+  }
+  return UI_12_FONT_ID;
 }
 }  // namespace
 
@@ -795,75 +801,98 @@ void DashboardTheme::drawSleepReadingStrip(const GfxRenderer& renderer, const Re
   renderer.fillRect(strip.x, strip.y, strip.width, strip.height, false);
   renderer.drawLine(strip.x, strip.y, strip.x + strip.width - 1, strip.y, true);
 
-  const int x = strip.x + kSleepStripSidePadding;
-  const int width = std::max(0, strip.width - 2 * kSleepStripSidePadding);
-  const int titleLineH = renderer.getLineHeight(UI_10_FONT_ID);
-  const int statsLineH = renderer.getLineHeight(SMALL_FONT_ID);
-  const int top = strip.y + std::max(0, (strip.height - titleLineH - kSleepStripRowGap - statsLineH) / 2);
-
-  // Row 1: bold title on the left; the chapter, when present, right-aligned
-  // and given at most 45% of the row so the title stays readable.
-  const char* chapter = (info.chapterTitle != nullptr && info.chapterTitle[0] != '\0') ? info.chapterTitle : nullptr;
-  int chapterW = 0;
-  std::string visibleChapter;
-  if (chapter != nullptr) {
-    visibleChapter = renderer.truncatedText(UI_10_FONT_ID, chapter, width * 45 / 100);
-    chapterW = renderer.getTextWidth(UI_10_FONT_ID, visibleChapter.c_str());
-    renderer.drawText(UI_10_FONT_ID, x + width - chapterW, top, visibleChapter.c_str(), true);
-  }
-  const char* title = (info.title != nullptr && info.title[0] != '\0') ? info.title : "-";
-  const int titleMaxW = std::max(1, width - (chapterW > 0 ? chapterW + kSleepStripTitleChapterGap : 0));
-  const auto visibleTitle = renderer.truncatedText(UI_10_FONT_ID, title, titleMaxW, EpdFontFamily::BOLD);
-  renderer.drawText(UI_10_FONT_ID, x, top, visibleTitle.c_str(), true, EpdFontFamily::BOLD);
-
-  // Row 2, in priority order.
-  char progress[8] = "";
+  // Progress bar near the strip's bottom edge, always on white so it shows even
+  // under a dark image: solid for read, a 1 px track for the rest.
+  int percent = -1;
+  const int barY = strip.y + strip.height - kSleepStripBarLift - kSleepStripBarHeight;
   if (info.progressPercent >= 0.0f) {
-    snprintf(progress, sizeof(progress), "%d%%", static_cast<int>(info.progressPercent + 0.5f));
+    percent = std::clamp(static_cast<int>(info.progressPercent + 0.5f), 0, 100);
+    const int fillW = (strip.width * percent) / 100;
+    if (fillW > 0) renderer.fillRect(strip.x, barY, fillW, kSleepStripBarHeight, true);
+    if (fillW < strip.width) {
+      const int trackY = barY + kSleepStripBarHeight - 1;
+      renderer.drawLine(strip.x + fillW, trackY, strip.x + strip.width - 1, trackY, true);
+    }
   }
+
+
+  // Right-hand group, in reading order: time left, streak, progress.
+  char progress[8] = "";
+  if (percent >= 0) snprintf(progress, sizeof(progress), "%d%%", percent);
   char timeLeft[40] = "";
-  char finish[40] = "";
   uint32_t secondsLeft = 0;
-  if (info.stats != nullptr && !info.stats->isCompleted &&
-      estimatedTimeLeft(*info.stats, info.progressPercent, secondsLeft)) {
+  if (info.stats != nullptr && info.stats->isCompleted) {
+    snprintf(timeLeft, sizeof(timeLeft), "%s", tr(STR_SLEEP_STRIP_FINISHED));
+  } else if (info.stats != nullptr && estimatedTimeLeft(*info.stats, info.progressPercent, secondsLeft)) {
     char duration[24];
     formatCompactDuration(secondsLeft, duration, sizeof(duration));
     snprintf(timeLeft, sizeof(timeLeft), tr(STR_SLEEP_STRIP_TIME_LEFT_FORMAT), duration);
-    ReadingStatsDateTime now;
-    if (halClock.isAvailable() && getCurrentLocalReadingStatsDateTime(now)) {
-      ReadingStatsDate finishDate;
-      if (!estimateFinishDateFromDailyPace(*info.stats, now, secondsLeft, finishDate)) {
-        ReadingStatsDateTime atPace = now;
-        addSecondsToReadingStatsDateTime(atPace, secondsLeft);
-        finishDate = atPace.date;
-      }
-      if (finishDate.isValid()) {
-        char date[24];
-        formatReadingStatsShortDate(finishDate, date, sizeof(date));
-        snprintf(finish, sizeof(finish), tr(STR_SLEEP_STRIP_FINISH_FORMAT), date);
-      }
+  }
+  char streak[8] = "";
+  if (info.streakDays > 0) snprintf(streak, sizeof(streak), "%u", static_cast<unsigned>(info.streakDays));
+
+  const char* title = (info.title != nullptr && info.title[0] != ' ') ? info.title : "-";
+
+  // The large faces are compressed reader fonts: their glyphs exist only after
+  // a prewarm, so prepare exactly this strip's text (regular + bold) before any
+  // measuring or drawing. If the face still measures nothing, use the UI font.
+  // 1 px separator above, 1 px air above the bar.
+  const int textAreaH = strip.height - kSleepStripBarLift - kSleepStripBarHeight - 2;
+  int font = pickSleepStripFont(renderer, textAreaH);
+  if (font != UI_12_FONT_ID) {
+    std::string glyphs = std::string(title) + " " + timeLeft + " " + streak + " " + progress + " â¦";
+    auto* fonts = renderer.getFontCacheManager();
+    if (fonts == nullptr || !fonts->prewarmCache(font, glyphs.c_str(), 0x03) ||
+        renderer.getTextWidth(font, "M", EpdFontFamily::BOLD) <= 0) {
+      LOG_ERR("SLP", "Sleep strip font unavailable; using the UI font");
+      font = UI_12_FONT_ID;
     }
   }
-  char today[40] = "";
-  if (info.todaySeconds >= 60) {
-    char duration[24];
-    formatCompactDuration(info.todaySeconds, duration, sizeof(duration));
-    snprintf(today, sizeof(today), tr(STR_SLEEP_STRIP_TODAY_FORMAT), duration);
+  const int lineH = renderer.getLineHeight(font);
+  const int y = strip.y + 1 + std::max(0, (textAreaH - lineH) / 2);
+  const int left = strip.x + kSleepStripSidePadding;
+  const int right = strip.x + strip.width - kSleepStripSidePadding;
+
+  const int progressW = progress[0] ? renderer.getTextWidth(font, progress, EpdFontFamily::BOLD) : 0;
+  const int timeW = timeLeft[0] ? renderer.getTextWidth(font, timeLeft) : 0;
+  const int streakW = streak[0] ? kSleepStripIconSize + kSleepStripIconGap + renderer.getTextWidth(font, streak) : 0;
+
+  const int titleW = renderer.getTextWidth(font, title, EpdFontFamily::BOLD);
+  const auto groupWidth = [&](const bool withTime, const bool withStreak) {
+    int w = progressW;
+    for (const int itemW : {withTime ? timeW : 0, withStreak ? streakW : 0}) {
+      if (itemW > 0) w += (w > 0 ? kSleepStripItemGap : 0) + itemW;
+    }
+    return w;
+  };
+  // Never shorten the title to make room: drop the streak, then time left.
+  bool showTime = timeW > 0;
+  bool showStreak = streakW > 0;
+  const int available = right - left;
+  if (showStreak && titleW + kSleepStripTitleGap + groupWidth(showTime, true) > available) showStreak = false;
+  if (showTime && titleW + kSleepStripTitleGap + groupWidth(true, showStreak) > available) showTime = false;
+  const int groupW = groupWidth(showTime, showStreak);
+
+  int x = right;
+  if (progressW > 0) {
+    x -= progressW;
+    renderer.drawText(font, x, y, progress, true, EpdFontFamily::BOLD);
   }
-  char streak[40] = "";
-  if (info.streakDays > 0) {
-    snprintf(streak, sizeof(streak), tr(STR_STATS_DAY_STREAK_FORMAT), static_cast<unsigned>(info.streakDays));
+  if (showStreak) {
+    const int numW = streakW - kSleepStripIconSize - kSleepStripIconGap;
+    x -= (x < right ? kSleepStripItemGap : 0) + numW;
+    renderer.drawText(font, x, y, streak, true);
+    x -= kSleepStripIconGap + kSleepStripIconSize;
+    renderer.drawIcon(StreakIcon, x, y + (lineH - kSleepStripIconSize) / 2, kSleepStripIconSize, kSleepStripIconSize);
+  }
+  if (showTime) {
+    x -= (x < right ? kSleepStripItemGap : 0) + timeW;
+    renderer.drawText(font, x, y, timeLeft, true);
   }
 
-  std::string stats;
-  for (const char* item :
-       {static_cast<const char*>(progress), static_cast<const char*>(timeLeft), static_cast<const char*>(finish),
-        static_cast<const char*>(today), static_cast<const char*>(streak)}) {
-    if (!appendIfFits(renderer, stats, item, width)) break;
-  }
-  if (!stats.empty()) {
-    renderer.drawText(SMALL_FONT_ID, x, top + titleLineH + kSleepStripRowGap, stats.c_str(), true);
-  }
+  const int titleMaxW = std::max(1, available - (groupW > 0 ? groupW + kSleepStripTitleGap : 0));
+  const auto visibleTitle = renderer.truncatedText(font, title, titleMaxW, EpdFontFamily::BOLD);
+  renderer.drawText(font, left, y, visibleTitle.c_str(), true, EpdFontFamily::BOLD);
 }
 
 Rect DashboardTheme::getHomeCoverRect(const GfxRenderer& renderer) {

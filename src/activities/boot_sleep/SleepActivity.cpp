@@ -26,7 +26,6 @@
 #include "../home/RecentBookProgress.h"
 #include "../reader/BookStatsTracking.h"
 #include "../reader/BookStatsView.h"
-#include "../reader/DailyReadingStats.h"
 #include "../reader/EpubReaderActivity.h"
 #include "../reader/EpubReaderUtils.h"
 #include "../reader/GlobalReadingStats.h"
@@ -762,12 +761,9 @@ SleepActivity::ReadingStrip SleepActivity::loadReadingStrip() const {
   const RecentBook book = recentBookForPath(path);
   strip.title = book.title;
   strip.progressPercent = RecentBookProgress::loadPercent(book);
-  strip.chapterTitle = loadChapterTitleForPath(path);
-  // Today's reading and the streak need a trusted local date (the T5 has an RTC).
+  // The streak needs a trusted local date (the T5 has an RTC).
   ReadingStatsDateTime now;
   if (getCurrentLocalReadingStatsDateTime(now)) {
-    uint32_t seconds = 0;
-    if (DailyReadingStats::secondsFor(readingStatsDayIndex(now.date), seconds)) strip.todaySeconds = seconds;
     strip.streakDays = GlobalReadingStats::load().currentReadingStreak(&now.date);
   }
   return strip;
@@ -909,10 +905,8 @@ bool SleepActivity::drawSleepBitmap(Bitmap& bitmap, const BitmapPlacement& place
   if (strip != nullptr && mode == GfxRenderer::BW) {
     DashboardTheme::SleepStripInfo info;
     info.title = strip->title.c_str();
-    info.chapterTitle = strip->chapterTitle.c_str();
     info.stats = strip->hasStats ? &strip->stats : nullptr;
     info.progressPercent = strip->progressPercent;
-    info.todaySeconds = strip->todaySeconds;
     info.streakDays = strip->streakDays;
     DashboardTheme::drawSleepReadingStrip(renderer, Rect{0, strip->top, renderer.getScreenWidth(), strip->height},
                                           info);

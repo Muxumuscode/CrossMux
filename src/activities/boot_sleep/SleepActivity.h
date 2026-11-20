@@ -38,8 +38,6 @@ class SleepActivity final : public Activity {
     bool hasStats = false;
     float progressPercent = -1.0f;
     std::string title;
-    std::string chapterTitle;
-    uint32_t todaySeconds = 0;
     uint16_t streakDays = 0;
   };
   void renderCustomSleepScreen(bool withReadingStrip = false) const;

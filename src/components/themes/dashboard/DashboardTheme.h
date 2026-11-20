@@ -49,14 +49,15 @@ class DashboardTheme : public MinimalTheme {
   // Row 1: book title (bold) and chapter. Row 2: progress, time left, estimated
   // finish, today's reading, and streak, dropping the last items that don't fit.
   // 60 px lets an X4-sized 480x800 image scale to exactly 540x900 above it.
+  // 540 - 480x800 scaled to the T5's width (540x900) leaves exactly 60 px, so
+  // custom images stay flush on three sides: one line in the largest face that
+  // fits (title; time left, streak, progress %) above a 4 px progress bar.
   static constexpr int kSleepReadingStripHeight = 60;
   struct SleepStripInfo {
     const char* title = nullptr;
-    const char* chapterTitle = nullptr;
-    const BookReadingStats* stats = nullptr;  // null: no Time Left / finish date
+    const BookReadingStats* stats = nullptr;  // null: no Time Left
     float progressPercent = -1.0f;
-    uint32_t todaySeconds = 0;  // 0: omitted
-    uint16_t streakDays = 0;    // 0: omitted
+    uint16_t streakDays = 0;  // 0: omitted
   };
   static void drawSleepReadingStrip(const GfxRenderer& renderer, const Rect& strip, const SleepStripInfo& info);
 
