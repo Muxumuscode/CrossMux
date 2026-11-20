@@ -141,3 +141,20 @@ move a highlight across the dock. Reader menus still use the reader mapping.
 - OTA update checks still read uxjulia/CrossInk releases, which have no T5
   firmware; point them at this fork's releases or disable them for `lilygo`.
 - Move to the final `v2.0.0` tag when CrossInk publishes it.
+
+## Parked
+
+- **Game Boy emulator as a dual-boot app.** Try
+  [T5S3-GameBoy](https://github.com/ShallowGreen123/T5S3-GameBoy) (CrankBoy core,
+  touch controls, ROMs and saves on SD, no hardware mod) standalone first. If its
+  speed and ghosting are acceptable and its license allows redistribution: turn
+  the unused `spiffs` region of `partitions.csv` (0xC90000, 3.4 MB) into a third
+  app slot, add a CrossMux menu entry that sets it as the boot partition and
+  restarts, and add a "Back to CrossMux" entry in the emulator. Needs one USB
+  reflash for the new partition table; OTA must never target the third slot.
+  Not built into CrossMux itself: the T5 app slot is 87.6% full and SD plugins
+  cannot run native code.
+- **CrossNext features.** [CrossNext](https://github.com/manuelx900/CrossNext)
+  (MIT, CrossPoint 2.0.0 + CrossPlay, X4 Pro) is a source of ideas, not code to
+  merge. Candidates: Library Collections/Filter (port into CrossMux); its games
+  could live in the same third slot as the emulator instead of in the reader.
