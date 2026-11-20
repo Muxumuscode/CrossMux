@@ -141,6 +141,18 @@ def get_production_version(project_dir):
     return get_crossink_version(project_dir)
 
 
+def get_crossmux_version(project_dir):
+    # CrossMux (lilygo) releases: CROSSINK_RELEASE_VERSION when set, else [crossmux] version.
+    release_version = os.environ.get('CROSSINK_RELEASE_VERSION')
+    if release_version:
+        return sanitize_version_component(release_version.lstrip('v'))
+    config = _read_ini(project_dir)
+    if config.has_option('crossmux', 'version'):
+        return config.get('crossmux', 'version')
+    warn('No [crossmux] version in platformio.ini; falling back to the CrossInk version')
+    return get_crossink_version(project_dir)
+
+
 def get_hardware_version(project_dir, pioenv):
     if os.environ.get('CROSSINK_RC_HASH'):
         return get_release_candidate_version(project_dir)
@@ -210,6 +222,12 @@ def inject_version(env):
         else:
             print(f'CrossInk build version: {version_string}')
         scoped.append(('CROSSINK_VERSION', f'\\"{version_string}\\"'))
+
+    elif pioenv == 'lilygo':
+        # Four-part version so OTA can compare CrossMux releases (tags v2.0.0.N).
+        version_string = get_crossmux_version(project_dir)
+        scoped.append(('CROSSINK_VERSION', f'\\"{version_string}\\"'))
+        print(f'CrossMux build version: {version_string}')
 
     elif pioenv == 'debug':
         branch = get_git_branch(project_dir)

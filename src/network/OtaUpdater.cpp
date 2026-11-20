@@ -33,7 +33,11 @@ namespace {
 
 constexpr char latestReleaseUrl[] = CROSSINK_OTA_RELEASE_URL;
 
-#ifdef CROSSINK_FIRMWARE_DEVICE_TYPE
+#ifdef CROSSINK_OTA_ASSET_STEM
+// Forks that publish their own releases can name the app image their way.
+constexpr char firmwareAssetStem[] = CROSSINK_OTA_ASSET_STEM;
+constexpr char firmwareAssetName[] = CROSSINK_OTA_ASSET_STEM ".bin";
+#elif defined(CROSSINK_FIRMWARE_DEVICE_TYPE)
 constexpr char firmwareAssetStem[] = "firmware-" CROSSINK_FIRMWARE_DEVICE_TYPE;
 constexpr char firmwareAssetName[] = "firmware-" CROSSINK_FIRMWARE_DEVICE_TYPE ".bin";
 #else

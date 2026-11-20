@@ -96,6 +96,32 @@ reliable on the S3's USB CDC) and `CMD:THEME:<n>`.
 - **Windows build fix** in `scripts/git_branch.py` (pioarduino's include
   shortening wrapper ignores middleware patterns).
 
+## Releases and OTA updates
+
+The `lilygo` build checks
+`https://api.github.com/repos/Muxumuscode/CrossMux/releases/latest` and installs
+the release's `crossmux-t5-app.bin` when its tag is newer than the running
+version. GitHub's "latest" never returns pre-releases, so pre-releases are a safe
+way to share test builds; devices only update to full releases.
+
+Versions are the CrossInk base plus a CrossMux build number: `2.0.0.1`,
+`2.0.0.2`, and so on (`[crossmux] version` in `platformio.ini`, read by
+`scripts/git_branch.py`). When CrossMux moves to a newer CrossInk base, restart
+at `<base>.1`.
+
+To publish an update:
+
+1. Bump `[crossmux] version` in `platformio.ini` and commit.
+2. Build: `pio run -e lilygo`. The log prints `CrossMux build version: 2.0.0.N`.
+3. Create a GitHub release tagged `v2.0.0.N` (the tag must match the version).
+4. Upload `.pio/build/lilygo/firmware.bin` as `crossmux-t5-app.bin` (the name
+   OTA looks for), plus the full image as `crossmux-t5-full.bin` for USB
+   installs.
+5. Publish it as a full release. Leave "Set as a pre-release" unticked.
+
+Devices running a build from before this change call themselves `dev` and never
+see an update as newer; flash a `2.0.0.1` or later build over USB once.
+
 ## Sleep screen: Custom + Reading Strip
 
 `Settings > Display > Sleep Screen > Custom + Reading Strip` (tall screens only)
