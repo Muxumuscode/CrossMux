@@ -37,6 +37,7 @@
 #include "activities/settings/TtfRenderOptionsActivity.h"
 #endif
 #include "components/DrawerHandle.h"
+#include "components/themes/TallScreen.h"
 #include "components/ReaderBookSummary.h"
 #include "components/ReaderSliderHints.h"
 #include "components/SliderValue.h"
@@ -80,7 +81,9 @@ constexpr int LANDSCAPE_ROOT_ROWS = 4;
 constexpr int16_t KEYPAD_DOT = -1;
 constexpr int16_t KEYPAD_OK = -2;
 constexpr unsigned long PERCENT_KEYPAD_LONG_PRESS_MS = 1000;
-constexpr uint8_t PORTRAIT_DRAWER_HEIGHT_PERCENT = 50;
+// The T5's touch-sized rows fit only ~5 per tab in half of its 960 px screen, so
+// the sheet is taller there (~7 rows without scrolling, page still visible above).
+constexpr uint8_t PORTRAIT_DRAWER_HEIGHT_PERCENT = tallScreenValue(50, 65);
 // Non-root landscape panes retain a little more room than portrait. Root
 // height is calculated from the rows reserved in drawerHeight().
 constexpr uint8_t LANDSCAPE_DRAWER_HEIGHT_PERCENT = 65;

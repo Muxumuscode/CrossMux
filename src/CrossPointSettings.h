@@ -11,6 +11,7 @@
 #include <mutex>
 
 #include "ReaderFontSizeStep.h"
+#include "components/themes/TallScreen.h"
 #include "TiltSensitivity.h"
 #include "util/ReaderStatusBarConfig.h"
 
@@ -490,7 +491,9 @@ class CrossPointSettings : public PersistableStore<CrossPointSettings> {
   uint8_t statusBarBattery = 1;
   uint8_t xtcStatusBarMode = XTC_STATUS_BAR_HIDE;
   uint8_t displayStatusBarTextSize = 0;  // Global header status strip, independent of reader text.
-  uint8_t statusBarTextSize = 0;         // Small (Inter 8), Medium (Inter 10), Large (Inter 12).
+  // Small (Inter 8), Medium (Inter 10), Large (Inter 12). Small is hard to read on
+  // the T5's larger, higher-PPI panel, so it defaults to Medium there.
+  uint8_t statusBarTextSize = tallScreenValue(0, 1);
   ReaderStatusBarConfig topReaderStatusBar{};
   ReaderStatusBarConfig bottomReaderStatusBar = [] {
     ReaderStatusBarConfig config;
