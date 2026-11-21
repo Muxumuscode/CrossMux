@@ -77,12 +77,29 @@ All talk to the device over USB serial and need `pip install pyserial pillow`.
 | `crossink_usb.py` | Python client for CrossInk's USB file protocol: list, read, write. File commands only run while the device is on Home. Uploading a book clears its cache but keeps progress and stats. |
 | `scan_meta.py <dir>` | Flag EPUBs whose title/author metadata will display badly. |
 | `fix_pioarduino_scons.py` | The Windows SCons fix above. |
+| `flash_t5.ps1 [-Port COM7]` | Flash the built app over USB: waits for the T5, retries, erases otadata so app0 boots even after an OTA update, then resets. |
+| `screen_tour.py COM7 outdir` | Open every `CMD:OPEN` screen, screenshot each, and save a contact sheet (`sheet.png`). |
+| `serial_reset.py COM7` | Normal reset over USB (esptool's reset can leave the chip in download mode). |
 
 Serial developer commands added in this fork: `CMD:SCREENSHOT` (existing, made
 reliable on the S3's USB CDC), `CMD:THEME:<n>`, and `CMD:SLEEPPREVIEW`, which
 draws the sleep screen without sleeping (USB is off once the device really
 sleeps). Send `CMD:SLEEPPREVIEW` and `CMD:SCREENSHOT` together, or Home redraws
 over the preview first; `CMD:THEME:6` returns to Home.
+
+`CMD:OPEN:<screen>` opens a screen by name and replies `OPEN_OK:<screen>` or
+`OPEN_ERR:<screen>`. It is an allowlist of views only (no delete, toggle, sync,
+rotate, or network actions): `home`, `controlcenter`, `library`, `files`,
+`settings`, `plugins`, `reader`, `drawer0`..`drawer4` (the reader menu on the
+Font, Layout, More, Location, or Settings tab), and the in-book views
+`contents`, `percent`, `bookstats`, `readeroptions`, `controls`, `bookmarks`,
+`clippings`, `lookuphistory`, `statusbar`. Reader screens open the last book
+read. `screen_tour.py` walks all of them.
+
+Flashing note: after an OTA update the bootloader runs **app1**, so writing
+`firmware.bin` to app0 (0x10000) alone changes nothing on the device. Erase
+otadata (`esptool erase-region 0xe000 0x2000`) or use `flash_t5.ps1`, which
+does it for you.
 
 ## What is in the fork
 
