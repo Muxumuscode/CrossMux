@@ -203,6 +203,14 @@ move a highlight across the dock. Reader menus still use the reader mapping.
   value: change it under Settings > Controls > Home button gestures). Light
   sleep polls touch only every ~150 ms, so a flicker during it can still pass;
   watch for a recurrence.
+  Recurred while navigating Settings by touch (Home pad untouched). The pad
+  shares the GT911 with the screen, so a screen contact near the bottom edge or
+  a palm on the bezel can set the key bit. Home taps that start during, or
+  within 300 ms after, a screen contact are now ignored and logged as
+  `Ignored a Home-key tap that started during a screen touch`. If the light
+  still switches, capture a serial log: `Frontlight toggled ... by ...` names
+  the trigger, and `FrontlightMgr apply: ... lit=0` with no toggle line before
+  it means the change came from somewhere else.
 
 ## Parked
 

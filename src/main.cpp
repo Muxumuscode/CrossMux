@@ -929,17 +929,39 @@ bool executeX4ProHomeButtonAction(const uint8_t action,
 // frontlight (seen as the light switching itself). A fingertip tap holds the pad
 // for well over this; shorter press/release pairs are treated as noise.
 constexpr unsigned long T5_HOME_KEY_MIN_TAP_MS = 50;
+// The pad shares the GT911 with the screen. A finger working near the bottom of
+// the screen, or a palm on the bezel while touching it, can set the key bit too:
+// a Home press that starts during, or just after, a screen contact is not a
+// deliberate Home tap.
+constexpr unsigned long T5_HOME_KEY_SCREEN_TOUCH_GUARD_MS = 300;
 unsigned long t5HomeKeyPressedAt = 0;
+unsigned long t5LastScreenContactAt = 0;
+bool t5HomeKeyPressDuringScreenTouch = false;
 bool t5HomeKeyTapIsBlip = false;
 
 // Once per loop, after the input update and before any Home-key handler (those
 // read the tap several times per loop).
 void trackT5HomeKeyPress() {
   const unsigned long now = millis();
-  if (gpio.wasHomeKeyPressed()) t5HomeKeyPressedAt = now;
-  t5HomeKeyTapIsBlip = gpio.wasHomeKeyTapped() && now - t5HomeKeyPressedAt < T5_HOME_KEY_MIN_TAP_MS;
-  if (t5HomeKeyTapIsBlip) {
-    LOG_DBG("HOME", "Ignored a %lu ms Home-key blip", now - t5HomeKeyPressedAt);
+  float nx = 0.0f, ny = 0.0f;
+  if (gpio.isTouchHeldAt(nx, ny) || gpio.wasTouchDown(nx, ny) || gpio.wasTouchReleased()) {
+    t5LastScreenContactAt = now;
+  }
+  if (gpio.wasHomeKeyPressed()) {
+    t5HomeKeyPressedAt = now;
+    t5HomeKeyPressDuringScreenTouch =
+        t5LastScreenContactAt != 0 && now - t5LastScreenContactAt <= T5_HOME_KEY_SCREEN_TOUCH_GUARD_MS;
+  }
+  if (!gpio.wasHomeKeyTapped()) {
+    t5HomeKeyTapIsBlip = false;
+    return;
+  }
+  const unsigned long heldMs = now - t5HomeKeyPressedAt;
+  t5HomeKeyTapIsBlip = heldMs < T5_HOME_KEY_MIN_TAP_MS || t5HomeKeyPressDuringScreenTouch;
+  if (heldMs < T5_HOME_KEY_MIN_TAP_MS) {
+    LOG_DBG("HOME", "Ignored a %lu ms Home-key blip", heldMs);
+  } else if (t5HomeKeyPressDuringScreenTouch) {
+    LOG_INF("HOME", "Ignored a Home-key tap that started during a screen touch");
   }
 }
 #endif

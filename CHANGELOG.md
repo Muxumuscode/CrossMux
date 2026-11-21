@@ -19,6 +19,8 @@
 
 ### Fixed
 
+- On the T5, touching the screen no longer sets off the Home pad (it shares the touch chip), which could switch the backlight or go back while navigating Settings.
+
 - T5 deep sleep powers down the panel PMIC, parks touch in reset, latches the frontlight off, and no longer idles if the power button never reads released.
 - T5 frontlight dims smoothly to 1% (1 kHz, 12-bit PWM with boost start-up floors).
 - Serial screenshots are complete on ESP32-S3 boards using the hardware USB CDC port.
