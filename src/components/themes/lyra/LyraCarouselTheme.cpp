@@ -1,5 +1,7 @@
 #include "LyraCarouselTheme.h"
 
+#include "components/GamepadIcon.h"
+
 #include <Bitmap.h>
 #include <GfxRenderer.h>
 #include <HalStorage.h>
@@ -629,6 +631,8 @@ void LyraCarouselTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int but
       const UIIcon icon = rowIcon(i);
       if (icon == UIIcon::BookmarkIcon) {
         drawMenuBookmarkIcon(renderer, iconX, iconY, selected);
+      } else if (icon == UIIcon::Games) {
+        drawGamepadIcon(renderer, iconX, iconY, kMenuIconSize, !selected);
       } else {
         const freeink::Icon* bmp = iconForName(icon, kMenuIconSize);
         if (bmp != nullptr) {

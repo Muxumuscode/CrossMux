@@ -55,8 +55,12 @@ def _get_app_partition_limit(partition_file, target_label=None):
             if not row[0] or row[0].startswith('#') or len(row) < 5:
                 continue
 
-            name, partition_type, _subtype, _offset, size = row[:5]
+            name, partition_type, subtype, _offset, size = row[:5]
             if partition_type != 'app' or (target_label and name != target_label):
+                continue
+            # Only OTA slots hold this firmware. A factory slot holds a different
+            # app (the T5's CrossMux Games slot), so its size is not a limit here.
+            if not target_label and subtype == 'factory':
                 continue
 
             app_labels.append(name)

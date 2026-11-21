@@ -179,7 +179,8 @@ enum UIIcon {
   Hotspot,
   Chart,
   BookCheck,
-  Plugins
+  Plugins,
+  Games  // drawn in code (components/GamepadIcon.h), not from a bitmap
 };
 
 // Default theme implementation (Classic Theme)

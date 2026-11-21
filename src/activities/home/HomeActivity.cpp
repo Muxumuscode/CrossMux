@@ -40,6 +40,7 @@
 #include "components/themes/lyra/LyraCarouselTheme.h"
 #include "components/themes/minimal/MinimalTheme.h"
 #include "fontIds.h"
+#include "util/GamesSlot.h"
 
 namespace {
 constexpr uint32_t CAROUSEL_CACHE_MAGIC = 0x43434152;  // "CCAR"
@@ -61,6 +62,7 @@ enum class HomeMenuAction {
   ReadingStats,
   Bookmarks,
   FileTransfer,
+  Games,  // CrossMux Games slot (util/GamesSlot.h)
   Settings,
 };
 
@@ -71,7 +73,7 @@ struct HomeMenuEntry {
 };
 
 struct HomeMenuEntries {
-  static constexpr int kCapacity = 8;
+  static constexpr int kCapacity = 9;
   std::array<HomeMenuEntry, kCapacity> entries{};
   int count = 0;
 
@@ -246,6 +248,9 @@ void appendHomeMenuItems(HomeMenuEntries& items, bool hasPlugins, bool hasReadin
   if (hasBookmarks || hasClippings) {
     items.push({savedItemsLabel(hasBookmarks, hasClippings), BookmarkIcon, HomeMenuAction::Bookmarks});
   }
+  if (games_slot::available()) {
+    items.push({tr(STR_GAMES), UIIcon::Games, HomeMenuAction::Games});
+  }
 
   items.push({tr(STR_FILE_TRANSFER), Transfer, HomeMenuAction::FileTransfer});
   items.push({tr(STR_SETTINGS_TITLE), Settings, HomeMenuAction::Settings});
@@ -273,6 +278,9 @@ HomeMenuEntries buildMinimalMenuItems(bool hasPlugins, bool hasReadingStats, boo
   }
   if (hasReadingStats) {
     items.push({tr(STR_READING_STATS), Chart, HomeMenuAction::ReadingStats});
+  }
+  if (games_slot::available()) {
+    items.push({tr(STR_GAMES), UIIcon::Games, HomeMenuAction::Games});
   }
 
   items.push({tr(STR_FILE_TRANSFER), Transfer, HomeMenuAction::FileTransfer});
@@ -1482,6 +1490,9 @@ void HomeActivity::loop() {
           case HomeMenuAction::Bookmarks:
             onSavedItemsOpen();
             break;
+          case HomeMenuAction::Games:
+            onGamesOpen();
+            break;
           case HomeMenuAction::FileTransfer:
             onFileTransferOpen();
             break;
@@ -1639,6 +1650,9 @@ void HomeActivity::loop() {
             break;
           case HomeMenuAction::Bookmarks:
             onSavedItemsOpen();
+            break;
+          case HomeMenuAction::Games:
+            onGamesOpen();
             break;
           case HomeMenuAction::FileTransfer:
             onFileTransferOpen();
@@ -1810,6 +1824,9 @@ void HomeActivity::loop() {
         break;
       case HomeMenuAction::Bookmarks:
         onSavedItemsOpen();
+        break;
+      case HomeMenuAction::Games:
+        onGamesOpen();
         break;
       case HomeMenuAction::FileTransfer:
         onFileTransferOpen();
@@ -2453,6 +2470,13 @@ void HomeActivity::onLibraryOpen() { activityManager.goToLibrary(); }
 void HomeActivity::onSettingsOpen() { activityManager.goToSettings(); }
 
 void HomeActivity::onFileTransferOpen() { activityManager.goToFileTransfer(); }
+
+void HomeActivity::onGamesOpen() {
+  if (!games_slot::launch()) {
+    LOG_ERR("HOME", "Could not switch to Games");
+    requestUpdate();
+  }
+}
 
 void HomeActivity::onPluginsOpen() { activityManager.goToPlugins(); }
 

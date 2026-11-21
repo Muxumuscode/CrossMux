@@ -25,6 +25,7 @@
 #include "activities/reader/BookStatsTracking.h"
 #include "activities/reader/GlobalReadingStats.h"
 #include "activities/reader/ReadingStatsUtils.h"
+#include "components/GamepadIcon.h"
 #include "components/TouchRegistry.h"
 #include "components/UITheme.h"
 #include "components/UiAppHelpers.h"
@@ -854,6 +855,8 @@ void DashboardTheme::drawHomeDock(const GfxRenderer& renderer, const UIIcon* ico
     }
     if (icons[i] == UIIcon::BookmarkIcon) {
       drawDockBookmarkIcon(renderer, iconX, iconY, !pressed);
+    } else if (icons[i] == UIIcon::Games) {
+      drawGamepadIcon(renderer, iconX, iconY, kDockIconSize, !pressed);
     } else if (const freeink::Icon* bitmap = iconForName(icons[i], kDockIconSize)) {
       drawLucideIcon(renderer, *bitmap, iconX, iconY, !pressed);
     }

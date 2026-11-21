@@ -16,6 +16,7 @@
 #include "DeviceCapabilities.h"
 #include "RecentBooksStore.h"
 #include "activities/reader/BookReadingStats.h"
+#include "components/GamepadIcon.h"
 #include "components/TouchRegistry.h"
 #include "components/UITheme.h"
 #include "components/UiAppHelpers.h"
@@ -702,6 +703,9 @@ void LyraTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount
         const int polyY[5] = {iconY, iconY, iconY + ribbonHeight, iconY + ribbonHeight - notchSize,
                               iconY + ribbonHeight};
         renderer.fillPolygon(polyX, polyY, 5, true);
+        textX += mainMenuIconSize + hPaddingInSelection + 2;
+      } else if (icon == UIIcon::Games) {
+        drawGamepadIcon(renderer, textX, textY + 3, mainMenuIconSize, true);
         textX += mainMenuIconSize + hPaddingInSelection + 2;
       } else {
         const freeink::Icon* iconBitmap = iconForName(icon, mainMenuIconSize);

@@ -40,7 +40,7 @@ class DashboardTheme : public MinimalTheme {
   // TallScreen.h: Home's cover geometry (and so its cached thumbnail size)
   // depends on whether the dock reserves space.
   static constexpr bool hasHomeDock() { return kTallPortraitScreen && CROSSINK_APP_CAP_TOUCH; }
-  static constexpr int kHomeDockMaxItems = 8;
+  static constexpr int kHomeDockMaxItems = 9;
   // Draws one icon tile per entry and registers each as TouchRegistry::Item
   // with its index as the id. `pressedIndex` (or -1) draws as highlighted.
   static void drawHomeDock(const GfxRenderer& renderer, const UIIcon* icons, int count, int pressedIndex);

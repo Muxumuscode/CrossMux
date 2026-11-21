@@ -4,8 +4,9 @@
 #
 # - Waits for the T5's USB serial port (it vanishes while the reader sleeps; wake it with BOOT).
 # - Writes .pio\build\lilygo\firmware.bin to app0 (0x10000), with retries.
-# - Erases otadata (0xE000): after an OTA update the bootloader runs app1, so a USB
-#   flash to app0 would otherwise be ignored.
+# - Writes otadata (0xE000) to boot app0: after an OTA update the bootloader runs app1,
+#   so a USB flash to app0 would otherwise be ignored. (Not erased: erased otadata
+#   boots the games slot.)
 # - Pulses a normal reset: esptool's own reset can leave the chip in download mode.
 # Build first with C:\pio\penv\Scripts\pio.exe run -e lilygo (see docs/development/lilygo-t5s3.md).
 param([string]$Port = "", [int]$WaitMinutes = 30)
@@ -35,7 +36,11 @@ while (-not $ok -and (Get-Date) -lt $deadline) {
 }
 if (-not $ok) { Write-Error "Flash failed or no T5 found within $WaitMinutes minutes."; exit 1 }
 
-& $py -m esptool --chip esp32s3 --port $p erase-region 0xe000 0x2000
+# Point otadata at app0 rather than erasing it: with the T5's games (factory)
+# slot, erased otadata would boot CrossMux Games instead of the reader.
+$otadata = Join-Path ([System.IO.Path]::GetTempPath()) "crossmux_otadata_ota0.bin"
+& $py -I (Join-Path $PSScriptRoot "make_otadata.py") 0 $otadata
+& $py -m esptool --chip esp32s3 --port $p write-flash 0xe000 $otadata
 Start-Sleep -Seconds 3
 & $py -I (Join-Path $PSScriptRoot "serial_reset.py") (Find-Port)
 Write-Host "Flashed $firmware to $p and rebooted into it."

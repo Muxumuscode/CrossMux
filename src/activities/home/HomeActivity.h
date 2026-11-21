@@ -115,6 +115,8 @@ class HomeActivity final : public Activity {
   void onLibraryOpen();
   void onSettingsOpen();
   void onFileTransferOpen();
+  // Switch to the CrossMux Games slot (restarts; returns only on failure).
+  void onGamesOpen();
   void onPluginsOpen();
   void onReadingStatsOpen();
   void onSavedItemsOpen();
