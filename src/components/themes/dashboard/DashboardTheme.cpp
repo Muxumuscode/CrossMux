@@ -824,9 +824,8 @@ void DashboardTheme::drawSleepReadingStrip(const GfxRenderer& renderer, const Re
   if (info.stats != nullptr && info.stats->isCompleted) {
     snprintf(timeLeft, sizeof(timeLeft), "%s", tr(STR_SLEEP_STRIP_FINISHED));
   } else if (info.stats != nullptr && estimatedTimeLeft(*info.stats, info.progressPercent, secondsLeft)) {
-    char duration[24];
-    formatCompactDuration(secondsLeft, duration, sizeof(duration));
-    snprintf(timeLeft, sizeof(timeLeft), tr(STR_SLEEP_STRIP_TIME_LEFT_FORMAT), duration);
+    // Just the duration ("3h 26m"): the word "left" cost the streak its room.
+    formatCompactDuration(secondsLeft, timeLeft, sizeof(timeLeft));
   }
   char streak[8] = "";
   if (info.streakDays > 0) snprintf(streak, sizeof(streak), "%u", static_cast<unsigned>(info.streakDays));
