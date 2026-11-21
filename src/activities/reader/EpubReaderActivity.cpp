@@ -5000,7 +5000,38 @@ bool EpubReaderActivity::handleFrontlightPanelResult(const FrontlightPanelResult
   return true;
 }
 
+namespace {
+// Developer aid (CMD:OPEN): lets the next external action open one of the
+// reader's view-only screens. Cleared on use, so shortcuts are unaffected.
+bool devViewActionAllowed = false;
+
+bool isDevViewAction(const EpubReaderMenuAction action) {
+  switch (action) {
+    case EpubReaderMenuAction::SELECT_CHAPTER:
+    case EpubReaderMenuAction::GO_TO_PERCENT:
+    case EpubReaderMenuAction::READER_OPTIONS:
+    case EpubReaderMenuAction::CONTROLS_OPTIONS:
+    case EpubReaderMenuAction::VIEW_BOOKMARKS:
+    case EpubReaderMenuAction::VIEW_CLIPPINGS:
+    case EpubReaderMenuAction::LOOKUP_HISTORY:
+    case EpubReaderMenuAction::STATUS_BAR_SETTINGS:
+      return true;
+    default:
+      return false;
+  }
+}
+}  // namespace
+
+void EpubReaderActivity::allowNextDevViewAction() { devViewActionAllowed = true; }
+
 bool EpubReaderActivity::handleExternalReaderMenuAction(const uint8_t action) {
+  if (devViewActionAllowed) {
+    devViewActionAllowed = false;
+    if (isDevViewAction(static_cast<EpubReaderMenuAction>(action))) {
+      onReaderMenuConfirm(static_cast<EpubReaderMenuAction>(action));
+      return true;
+    }
+  }
   // READING_STATS: a sync started there returns to that screen.
   if (action != static_cast<uint8_t>(EpubReaderMenuAction::NEARBY_POSITION_SYNC) &&
       action != static_cast<uint8_t>(EpubReaderMenuAction::READING_STATS))

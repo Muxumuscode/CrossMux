@@ -63,6 +63,7 @@ constexpr const char* HIDDEN_ITEMS[] = {"System Volume Information", "XTCache"};
 uint8_t commandMatchPos = 0;
 char lineBuffer[LINE_BUFFER_SIZE] = {};
 int lastRequestedTheme = 0;
+char lastRequestedScreen[32] = {};
 size_t lineBufferPos = 0;
 uint8_t transferBuffer[SERIAL_CHUNK_SIZE];
 // Set once per process() call from the caller's screen context; read by every command handler.
@@ -929,6 +930,15 @@ ProcessResult handleLine() {
   if (strcmp(lineBuffer, "CMD:SLEEPPREVIEW") == 0) {
     return ProcessResult::SleepPreviewRequested;
   }
+  constexpr char kOpenPrefix[] = "CMD:OPEN:";
+  if (strncmp(lineBuffer, kOpenPrefix, sizeof(kOpenPrefix) - 1) == 0) {
+    const char* name = lineBuffer + sizeof(kOpenPrefix) - 1;
+    if (name[0] != '\0' && strlen(name) < sizeof(lastRequestedScreen)) {
+      strcpy(lastRequestedScreen, name);
+      return ProcessResult::OpenRequested;
+    }
+    writeLine("ERR:bad_screen\n");
+  }
   constexpr char kThemePrefix[] = "CMD:THEME:";
   if (strncmp(lineBuffer, kThemePrefix, sizeof(kThemePrefix) - 1) == 0) {
     char* end = nullptr;
@@ -1023,6 +1033,8 @@ int relaySyncHttp(void* context, const char* method, const char* endpoint, const
 }
 
 int requestedTheme() { return lastRequestedTheme; }
+
+const char* requestedScreen() { return lastRequestedScreen; }
 
 void registerUsbCdcOverflowHandler() {
 #if defined(CROSSINK_USB_RX_OVERFLOW_ENABLED)

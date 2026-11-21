@@ -111,6 +111,8 @@ inline esp_sleep_wakeup_cause_t esp_sleep_get_wakeup_cause() { return ESP_SLEEP_
 #include "activities/ActivityManager.h"
 #include "activities/boot_sleep/ImageFolderIndex.h"
 #include "activities/home/BookActions.h"
+#include "activities/reader/EpubReaderActivity.h"
+#include "activities/reader/EpubReaderMenuModel.h"
 #include "activities/reader/KOReaderSyncActivity.h"
 #include "activities/reader/ReaderUtils.h"
 #include "activities/reader/ReadingStatsUtils.h"
@@ -941,6 +943,79 @@ void trackT5HomeKeyPress() {
   }
 }
 #endif
+
+// Developer aid behind CMD:OPEN:<screen>, for capturing every layout over USB.
+// Allowlist only: each entry opens a view or picker and never changes or
+// deletes anything (no DELETE_*, TOGGLE_*, SYNC, ROTATE, or network screens).
+bool openScreenForDev(const char* name) {
+  if (strcmp(name, "home") == 0) {
+    activityManager.goHome();
+    return true;
+  }
+  if (strcmp(name, "library") == 0) {
+    activityManager.goToLibrary();
+    return true;
+  }
+  if (strcmp(name, "files") == 0) {
+    activityManager.goToFileBrowser();
+    return true;
+  }
+  if (strcmp(name, "settings") == 0) {
+    activityManager.goToSettings();
+    return true;
+  }
+  if (strcmp(name, "plugins") == 0) return activityManager.goToPlugins();
+  if (strcmp(name, "controlcenter") == 0) {
+    PendingOverlayResume resume;
+    resume.origin = PendingOverlayOrigin::Home;
+    resume.overlay = PendingOverlayType::FrontlightDrawer;
+    APP_STATE.setPendingOverlayResume(std::move(resume));
+    activityManager.goHome();
+    return true;
+  }
+
+  const std::string book = APP_STATE.openEpubPath;
+  if (book.empty()) return false;
+  if (strcmp(name, "reader") == 0) {
+    activityManager.goToReader(book);
+    return true;
+  }
+  struct ReaderView {
+    const char* name;
+    EpubReaderMenuAction action;
+  };
+  static constexpr ReaderView kReaderViews[] = {
+      {"contents", EpubReaderMenuAction::SELECT_CHAPTER},
+      {"percent", EpubReaderMenuAction::GO_TO_PERCENT},
+      {"bookstats", EpubReaderMenuAction::READING_STATS},
+      {"readeroptions", EpubReaderMenuAction::READER_OPTIONS},
+      {"controls", EpubReaderMenuAction::CONTROLS_OPTIONS},
+      {"bookmarks", EpubReaderMenuAction::VIEW_BOOKMARKS},
+      {"clippings", EpubReaderMenuAction::VIEW_CLIPPINGS},
+      {"lookuphistory", EpubReaderMenuAction::LOOKUP_HISTORY},
+      {"statusbar", EpubReaderMenuAction::STATUS_BAR_SETTINGS},
+  };
+  for (const auto& view : kReaderViews) {
+    if (strcmp(name, view.name) == 0) {
+      if (view.action != EpubReaderMenuAction::READING_STATS) EpubReaderActivity::allowNextDevViewAction();
+      activityManager.goToReaderAndRunMenuAction(book, static_cast<uint8_t>(view.action));
+      return true;
+    }
+  }
+  // "drawer0".."drawer4": the reader menu on that tab (Font, Layout, More,
+  // Location, Settings), reopened through the overlay-resume path.
+  if (strncmp(name, "drawer", 6) == 0 && name[6] >= '0' && name[6] <= '4' && name[7] == '\0') {
+    PendingOverlayResume resume;
+    resume.origin = PendingOverlayOrigin::Reader;
+    resume.overlay = PendingOverlayType::ReaderDrawer;
+    resume.tab = static_cast<uint8_t>(name[6] - '0');
+    resume.bookPath = book;
+    APP_STATE.setPendingOverlayResume(std::move(resume));
+    activityManager.goToReader(book);
+    return true;
+  }
+  return false;
+}
 
 bool wasX4ProHomeKeyTapped() {
 #ifdef SIMULATOR
@@ -2064,6 +2139,10 @@ void loop() {
   if (serialResult == UsbSerialFileTransfer::ProcessResult::SleepPreviewRequested) {
     activityManager.previewSleepScreen();
     logSerial.printf("SLEEPPREVIEW_OK\n");
+  }
+  if (serialResult == UsbSerialFileTransfer::ProcessResult::OpenRequested) {
+    const char* screen = UsbSerialFileTransfer::requestedScreen();
+    logSerial.printf(openScreenForDev(screen) ? "OPEN_OK:%s\n" : "OPEN_ERR:%s\n", screen);
   }
   if (serialResult == UsbSerialFileTransfer::ProcessResult::ScreenshotRequested) {
     RenderLock lock;

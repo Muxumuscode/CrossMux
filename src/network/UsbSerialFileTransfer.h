@@ -18,12 +18,18 @@ enum class ProcessResult {
   // Developer aid: "CMD:SLEEPPREVIEW" draws the sleep screen without sleeping,
   // so it can be captured with CMD:SCREENSHOT (USB is off once really asleep).
   SleepPreviewRequested,
+  // Developer aid: "CMD:OPEN:<screen>" opens a screen by name (see main.cpp's
+  // allowlist) so every layout can be captured without touching the device.
+  OpenRequested,
 };
 
 ProcessResult process(bool fileTransferAllowed);
 
 // Theme index from the last ThemeRequested result.
 int requestedTheme();
+
+// Screen name from the last OpenRequested result.
+const char* requestedScreen();
 
 // Register the native USB CDC overflow callback when the X4 Pro transport
 // supports it. Other transports intentionally do nothing.

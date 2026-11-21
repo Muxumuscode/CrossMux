@@ -666,6 +666,9 @@ class EpubReaderActivity final : public Activity {
   void onFrontlightGlobalSettingsClosed() override { endGlobalSettingsEdit(); }
   bool handleFrontlightPanelResult(const FrontlightPanelResult& result) override;
   bool handleExternalReaderMenuAction(uint8_t action) override;
+  // Developer aid (CMD:OPEN): the next external action may open a view-only
+  // reader screen (chapters, bookmarks, ...). One use, then cleared.
+  static void allowNextDevViewAction();
   bool restorePendingOverlay(const PendingOverlayResume& resume) override;
   void setAutoPageTurnIntervalSeconds(uint16_t seconds);
   uint16_t getAutoPageTurnIntervalSeconds() const;
