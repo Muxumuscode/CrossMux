@@ -693,6 +693,14 @@ void BaseTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
 
 int BaseTheme::getMenuRowHeight(const GfxRenderer&) const { return UITheme::getInstance().getMetrics().menuRowHeight; }
 
+// Mirrors drawButtonMenu()'s page math: verticalSpacing above the rows, then
+// rows separated by menuSpacing.
+int BaseTheme::buttonMenuHeight(const GfxRenderer&, const int buttonCount) const {
+  if (buttonCount <= 0) return 0;
+  const auto& metrics = UITheme::getInstance().getMetrics();
+  return metrics.verticalSpacing + buttonCount * metrics.menuRowHeight + (buttonCount - 1) * metrics.menuSpacing;
+}
+
 void BaseTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount, int selectedIndex,
                                const std::function<const char*(int index)>& buttonLabel,
                                const std::function<UIIcon(int index)>& rowIcon) const {

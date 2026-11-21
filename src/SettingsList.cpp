@@ -312,6 +312,11 @@ void forEachBaseSetting(SettingVisitor visitor, void* context) {
       StrId::STR_TIME_TO_SLEEP, &CrossPointSettings::sleepTimeoutMinutes,
       {CrossPointSettings::MIN_SLEEP_TIMEOUT_MINUTES, CrossPointSettings::MAX_SLEEP_TIMEOUT_MINUTES, 1},
       "sleepTimeoutMinutes", StrId::STR_CAT_SYSTEM));
+#if defined(FREEINK_DEVICE_LILYGO) && FREEINK_DEVICE_LILYGO
+  // Power Off cuts the battery through the BQ25896's ship mode; the PWR key turns it back on.
+  add(SettingInfo::Enum(StrId::STR_TIMEOUT_ACTION, &CrossPointSettings::sleepTimeoutAction,
+                        {StrId::STR_SLEEP, StrId::STR_ACTION_POWER_OFF}, "sleepTimeoutAction", StrId::STR_CAT_SYSTEM));
+#endif
   add(SettingInfo::Toggle(StrId::STR_CUSTOM_BOOTSCREEN, &CrossPointSettings::customBootscreenEnabled,
                           "customBootscreenEnabled", StrId::STR_CAT_SYSTEM));
   add(SettingInfo::Toggle(StrId::STR_SHOW_HIDDEN_FILES, &CrossPointSettings::showHiddenFiles, "showHiddenFiles",

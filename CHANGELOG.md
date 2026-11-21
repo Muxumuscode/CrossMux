@@ -9,6 +9,10 @@
 - On the T5, menus work with the side keys alone: tap BOOT to move up, tap IO48 to move down, and hold IO48 to select. On Dashboard Home the keys move across the shortcut icons. Holding BOOT still sleeps, and the Home key still goes back.
 - On the T5, pressing BOOT and IO48 together is an assignable combo (`BOOT + IO48 Combo`), taking a screenshot by default.
 - On the T5, a `Custom + Reading Strip` sleep screen fits your custom sleep image to the screen width at the top and adds a strip underneath with the book title and chapter, then progress, time left, estimated finish date, today's reading time, and your streak (items that don't fit are left off). X4-sized 480×800 images scale to exactly fill the space above the strip.
+- On the T5, the list-style Home themes (Classic, Lyra, Lyra 3-Covers, RoundedRaff) use the space under the menu for your lifetime totals and a 4-week reading calendar with your current streak.
+- On the T5, `Settings > System > Device > When Time Runs Out` can power the reader off instead of sleeping when the auto-sleep timer expires. The sleep screen stays on the panel; press PWR to turn it back on. With USB connected it sleeps as usual.
+- On the T5, `Settings > System > Battery` shows live fuel-gauge readings: charge, current draw, time left or to full, voltage, learned and design capacity, health, charge cycles, and temperature.
+- On the T5, `File Transfer > USB Drive` shows the SD card on a computer as a removable drive.
 - Developer serial command `CMD:THEME:<n>` switches the Home theme in memory for screenshots, plus T5 USB tools in `scripts/lilygo/`.
 
 ### Changed
@@ -19,6 +23,7 @@
 
 ### Fixed
 
+- The developer serial commands that change screens (`CMD:THEME`, `CMD:SLEEPPREVIEW`, `CMD:OPEN`) are refused while Wi-Fi, an update, a transfer, a sync, or the keyboard is in use, so they cannot interrupt it.
 - On the T5, touching the screen no longer sets off the Home pad (it shares the touch chip), which could switch the backlight or go back while navigating Settings.
 
 - T5 deep sleep powers down the panel PMIC, parks touch in reset, latches the frontlight off, and no longer idles if the power button never reads released.

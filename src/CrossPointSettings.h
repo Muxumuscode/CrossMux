@@ -633,6 +633,10 @@ class CrossPointSettings : public PersistableStore<CrossPointSettings> {
   uint8_t paragraphAlignment = JUSTIFIED;
   // Auto-sleep timeout setting (default 10 minutes). Legacy sleepTimeout enum values are migration-only.
   uint8_t sleepTimeoutMinutes = 10;
+  // What the auto-sleep timeout does (TIMEOUT_ACTION). Only offered on the T5,
+  // whose BQ25896 can cut the battery (ship mode); other boards always sleep.
+  enum TIMEOUT_ACTION : uint8_t { TIMEOUT_ACT_SLEEP = 0, TIMEOUT_ACT_POWER_OFF = 1, TIMEOUT_ACTION_COUNT };
+  uint8_t sleepTimeoutAction = TIMEOUT_ACT_SLEEP;
   // Quarter-dBm ceiling; 0 preserves the driver's default transmit power.
   uint8_t wifiTransmitPower = 0;
   // E-ink refresh frequency (default 15 pages)

@@ -15,6 +15,7 @@
 #include <iterator>
 
 #include "AboutActivity.h"
+#include "BatteryInfoActivity.h"
 #include "AppCapabilities.h"
 #include "AppVersion.h"
 #include "BackupStatsActivity.h"
@@ -1552,6 +1553,17 @@ void SettingsActivity::toggleCurrentSetting() {
           return;
         }
         startActivityForResult(std::move(about), [this](const ActivityResult&) { requestUpdate(); });
+        break;
+      }
+      case SettingAction::BatteryInfo: {
+#if defined(FREEINK_DEVICE_LILYGO) && FREEINK_DEVICE_LILYGO
+        auto battery = makeUniqueNoThrow<BatteryInfoActivity>(renderer, mappedInput);
+        if (!battery) {
+          LOG_ERR("SET", "OOM: Battery activity");
+          return;
+        }
+        startActivityForResult(std::move(battery), [this](const ActivityResult&) { requestUpdate(); });
+#endif
         break;
       }
       case SettingAction::RemapFrontButtons:

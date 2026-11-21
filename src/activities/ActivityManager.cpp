@@ -1173,8 +1173,11 @@ void ActivityManager::previewSleepScreen() {
     return;
   }
   // Renders and pushes the sleep frame exactly as sleep would; nothing else in
-  // the sleep path (saves, plugins, deep sleep) runs.
+  // the sleep path (saves, plugins, deep sleep) runs. onEnter() may switch the
+  // panel's inversion for the sleep frame; put it back for the live UI.
+  const bool wasInverted = display.isInverted();
   sleepActivity->onEnter();
+  display.setInverted(wasInverted);
 }
 
 bool ActivityManager::goToSleep(bool fromTimeout) {

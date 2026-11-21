@@ -201,6 +201,12 @@ int RoundedRaffTheme::getMenuRowHeight(const GfxRenderer& renderer) const {
   return renderer.getLineHeight(kTitleFontId) + 15;
 }
 
+// Mirrors drawButtonMenu()'s page math: rect.height / (row + gap) rows per page.
+int RoundedRaffTheme::buttonMenuHeight(const GfxRenderer& renderer, const int buttonCount) const {
+  if (buttonCount <= 0) return 0;
+  return buttonCount * (getMenuRowHeight(renderer) + kSelectableRowGap);
+}
+
 void RoundedRaffTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount, int selectedIndex,
                                       const std::function<const char*(int index)>& buttonLabel,
                                       const std::function<UIIcon(int index)>& rowIcon) const {

@@ -745,7 +745,94 @@ void drawDockBookmarkIcon(const GfxRenderer& renderer, const int x, const int y,
   const int polyY[5] = {iconY, iconY, iconY + ribbonHeight, iconY + ribbonHeight - notchSize, iconY + ribbonHeight};
   renderer.fillPolygon(polyX, polyY, 5, black);
 }
+
+// ---------------------------------------------------------------------------
+// Home stats band (list-style themes on tall screens): the space the menu
+// leaves under its last row. Row 1 is the lifetime totals; row 2, when it fits
+// and the clock is trusted, is a 4-week reading calendar with the streak.
+// ---------------------------------------------------------------------------
+constexpr int kBandTopPad = 10;  // Between the hairline and the first row.
+constexpr int kBandRowGap = 14;
+constexpr int kBandHistoryDays = 28;
+constexpr int kBandCell = 12;
+constexpr int kBandCellGap = 4;
+constexpr int kBandLabelGap = 5;
+
+int historyRowHeight(const GfxRenderer& renderer) {
+  return renderer.getLineHeight(SMALL_FONT_ID) + kBandLabelGap + kBandCell;
+}
+
+// Bit k of the history is the day k days before the anchor (see ReadingStatsUtils).
+bool readOnDay(const GlobalReadingStats& stats, const uint32_t dayIndex) {
+  if (stats.readingHistoryAnchorDay == 0 || dayIndex > stats.readingHistoryAnchorDay) return false;
+  const uint32_t age = stats.readingHistoryAnchorDay - dayIndex;
+  if (age >= READING_HISTORY_DAYS) return false;
+  return (stats.readingHistoryBits[age / 8] & static_cast<uint8_t>(1u << (age % 8))) != 0;
+}
+
+void drawReadingHistoryRow(const GfxRenderer& renderer, const Rect& row, const GlobalReadingStats& stats,
+                           const ReadingStatsDate& today) {
+  char streakBuf[32];
+  const uint16_t streak = stats.currentReadingStreak(&today);
+  if (streak > 0) {
+    snprintf(streakBuf, sizeof(streakBuf), tr(STR_STATS_DAY_STREAK_FORMAT), static_cast<unsigned>(streak));
+  } else {
+    snprintf(streakBuf, sizeof(streakBuf), "%s", tr(STR_STATS_NO_STREAK));
+  }
+  const int gridW = kBandHistoryDays * kBandCell + (kBandHistoryDays - 1) * kBandCellGap;
+  const int gridX = row.x + std::max(0, (row.width - gridW) / 2);
+  // Label line spans the grid: "Last 4 weeks" left, the streak right.
+  renderer.drawText(SMALL_FONT_ID, gridX, row.y, tr(STR_HOME_LAST_4_WEEKS));
+  const int streakW = renderer.getTextWidth(SMALL_FONT_ID, streakBuf, EpdFontFamily::BOLD);
+  renderer.drawText(SMALL_FONT_ID, gridX + gridW - streakW, row.y, streakBuf, true, EpdFontFamily::BOLD);
+
+  // Oldest day on the left, today on the right: filled = read that day,
+  // outlined = not, today gets a double outline so it reads as "now".
+  const uint32_t todayIndex = readingStatsDayIndex(today);
+  const int cellY = row.y + renderer.getLineHeight(SMALL_FONT_ID) + kBandLabelGap;
+  for (int i = 0; i < kBandHistoryDays; ++i) {
+    const uint32_t dayIndex = todayIndex - static_cast<uint32_t>(kBandHistoryDays - 1 - i);
+    const int cellX = gridX + i * (kBandCell + kBandCellGap);
+    if (readOnDay(stats, dayIndex)) {
+      renderer.fillRect(cellX, cellY, kBandCell, kBandCell, true);
+    } else {
+      renderer.drawRect(cellX, cellY, kBandCell, kBandCell, true);
+    }
+    if (i == kBandHistoryDays - 1) {
+      renderer.drawRect(cellX - 2, cellY - 2, kBandCell + 4, kBandCell + 4, true);
+    }
+  }
+}
 }  // namespace
+
+int DashboardTheme::homeStatsBandMinHeight(const GfxRenderer& renderer) {
+  return kBandTopPad + totalsRowHeight(renderer);
+}
+
+int DashboardTheme::homeStatsBandFullHeight(const GfxRenderer& renderer) {
+  return homeStatsBandMinHeight(renderer) + kBandRowGap + historyRowHeight(renderer);
+}
+
+void DashboardTheme::drawHomeStatsBand(const GfxRenderer& renderer, const Rect& band, const GlobalReadingStats& stats) {
+  if (band.height < homeStatsBandMinHeight(renderer)) return;
+  constexpr int kSidePad = 16;
+  const Rect inner{band.x + kSidePad, band.y, std::max(0, band.width - 2 * kSidePad), band.height};
+  renderer.drawLine(inner.x, band.y, inner.x + inner.width - 1, band.y, true);
+
+  ReadingStatsDateTime now;
+  const int totalsH = totalsRowHeight(renderer);
+  const int historyH = historyRowHeight(renderer);
+  const bool showHistory = getCurrentLocalReadingStatsDateTime(now) &&
+                           band.height >= kBandTopPad + totalsH + kBandRowGap + historyH;
+  const int contentH = totalsH + (showHistory ? kBandRowGap + historyH : 0);
+  // Centre the rows in the band below the hairline.
+  const int top = band.y + kBandTopPad + std::max(0, (band.height - kBandTopPad - contentH) / 2);
+  drawLifetimeTotals(renderer, inner.x, inner.width, top, stats, true);
+  if (showHistory) {
+    drawReadingHistoryRow(renderer, Rect{inner.x, top + totalsH + kBandRowGap, inner.width, historyH}, stats,
+                          now.date);
+  }
+}
 
 void DashboardTheme::drawHomeDock(const GfxRenderer& renderer, const UIIcon* icons, const int count,
                                   const int pressedIndex) {

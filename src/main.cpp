@@ -1,8 +1,12 @@
 #include <Arduino.h>
 #include <BoardConfig.h>
 #if FREEINK_DEVICE_LILYGO
+#include <BatteryMonitor.h>
 #include <BoardT5S3.h>
 #include <PowerManager.h>
+// Set just before an auto-sleep whose setting is Power Off; the sleep park hook
+// (setup()) then cuts the battery instead of deep sleeping.
+bool t5PowerOffOnSleep = false;
 #endif
 #include <CrossInkHalFrontlight.h>
 #include <FontCacheManager.h>
@@ -1556,7 +1560,26 @@ void setup() {
   // ESP's sleep and wake reset, so an unparked TPS65185 would draw all night.
   // The display driver's own power-down is cached and can be skipped, and two
   // early sleep paths in setup() run before the display is ever initialised.
-  freeink::PowerManager::setSleepParkHook([] { BoardT5S3::parkEpdPowerForSleep(); });
+  freeink::PowerManager::setSleepParkHook([] {
+    BoardT5S3::parkEpdPowerForSleep();
+    // "When Time Runs Out: Power Off": the sleep screen is already on the
+    // panel and everything is parked, so cut the battery through the
+    // BQ25896's ship mode instead of idling in deep sleep. Never with USB
+    // power: the charger cannot charge a disconnected pack, and the device
+    // would die the moment the cable came out. If the write fails (or USB is
+    // present) the normal deep sleep simply continues.
+    if (!t5PowerOffOnSleep) return;
+    if (gpio.isUsbConnected()) {
+      LOG_INF("SLP", "Power Off skipped: USB power present, sleeping instead");
+      return;
+    }
+    if (BatteryMonitor::enterShipMode()) {
+      delay(200);  // The rail collapses here; if it does not, deep sleep follows.
+      LOG_ERR("SLP", "Ship mode set but power stayed on, sleeping instead");
+    } else {
+      LOG_ERR("SLP", "Ship mode write failed, sleeping instead");
+    }
+  });
 #endif
   // checkPanic() clears the watchdog capture marker after a successful SD
   // dump, so retain the boot classification for the later activity route.
@@ -2148,9 +2171,20 @@ void loop() {
     lastMemPrint = millis();
   }
 
-  const auto serialResult = buttonShortcutController.isQuickLocked()
-                                ? UsbSerialFileTransfer::ProcessResult::None
-                                : UsbSerialFileTransfer::process(activityManager.isHomeActivity());
+  auto serialResult = buttonShortcutController.isQuickLocked()
+                          ? UsbSerialFileTransfer::ProcessResult::None
+                          : UsbSerialFileTransfer::process(activityManager.isHomeActivity());
+  // The screen-changing dev commands (theme, sleep preview, open) navigate away
+  // from the current activity. Refuse them while it is busy (Wi-Fi, OTA, a
+  // transfer, a sync, an open keyboard): the same activities keep the device
+  // awake, so preventAutoSleep() is the "busy" signal.
+  if ((serialResult == UsbSerialFileTransfer::ProcessResult::ThemeRequested ||
+       serialResult == UsbSerialFileTransfer::ProcessResult::SleepPreviewRequested ||
+       serialResult == UsbSerialFileTransfer::ProcessResult::OpenRequested) &&
+      activityManager.preventAutoSleep()) {
+    logSerial.printf("DEV_ERR:busy\n");
+    serialResult = UsbSerialFileTransfer::ProcessResult::None;
+  }
   if (serialResult == UsbSerialFileTransfer::ProcessResult::ThemeRequested) {
     // In-memory only (not saved): the next settings load restores the user's theme.
     SETTINGS.uiTheme = static_cast<uint8_t>(UsbSerialFileTransfer::requestedTheme());
@@ -2348,6 +2382,10 @@ void loop() {
   const unsigned long sleepTimeoutMs = SETTINGS.getSleepTimeoutMs();
   if (sleepTimeoutMs > 0 && millis() - lastActivityTime >= sleepTimeoutMs) {
     LOG_DBG("SLP", "Auto-sleep triggered after %lu ms of inactivity", sleepTimeoutMs);
+#if FREEINK_DEVICE_LILYGO
+    // Read by the sleep park hook (setup()), the last step before deep sleep.
+    t5PowerOffOnSleep = SETTINGS.sleepTimeoutAction == CrossPointSettings::TIMEOUT_ACT_POWER_OFF;
+#endif
     enterDeepSleep(true);
     // This should never be hit as `enterDeepSleep` calls esp_deep_sleep_start
     // In the simulator, deep sleep is a no-op and returns — reset the timer so

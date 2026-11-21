@@ -314,6 +314,9 @@ class BaseTheme {
   virtual void drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount, int selectedIndex,
                               const std::function<const char*(int index)>& buttonLabel,
                               const std::function<UIIcon(int index)>& rowIcon) const;
+  // Height drawButtonMenu() needs to show `buttonCount` rows on one page, so
+  // Home can tell how much of its menu rect is left over below the last row.
+  virtual int buttonMenuHeight(const GfxRenderer& renderer, int buttonCount) const;
   // With preserveBackdrop, leave the popup on the display but restore the backing
   // pixels for the next redraw. An empty rect means preservation failed and the
   // popup was skipped. Caller must own RenderLock.

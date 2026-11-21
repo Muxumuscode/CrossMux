@@ -2306,6 +2306,24 @@ void HomeActivity::render(RenderLock&&) {
     const int maxCoverHeight = safe.y + safe.height - homeTop - metrics.homeMenuTopOffset - requiredMenuHeight;
     homeCoverTileHeight = std::clamp(maxCoverHeight, 0, metrics.homeCoverTileHeight);
   }
+  // Tall screens: Classic's full-height cover leaves too little under the menu
+  // for the stats band (drawn below), so trade some cover height for it. Prefer
+  // the band with the reading calendar, then the totals-only band, but never
+  // shrink the cover below kMinClassicCover.
+  constexpr int kStatsBandGap = 12;  // Between the last menu row and the band.
+  if (kTallPortraitScreen && SETTINGS.uiTheme == CrossPointSettings::UI_THEME::CLASSIC &&
+      SETTINGS.shouldTrackReadingStats() && menuItems.size() <= 7) {
+    constexpr int kMinClassicCover = 340;
+    const int coverAndBand = safe.y + safe.height - homeTop - metrics.homeMenuTopOffset -
+                             GUI.buttonMenuHeight(renderer, static_cast<int>(menuItems.size())) - kStatsBandGap;
+    for (const int band : {DashboardTheme::homeStatsBandFullHeight(renderer),
+                           DashboardTheme::homeStatsBandMinHeight(renderer)}) {
+      if (coverAndBand - band >= kMinClassicCover) {
+        homeCoverTileHeight = std::min(homeCoverTileHeight, coverAndBand - band);
+        break;
+      }
+    }
+  }
 
   GUI.drawHeader(renderer, UITheme::getHeaderRect(renderer, metrics.homeTopPadding),
                  metrics.homeContinueReadingInMenu && !recentBooks.empty() ? recentBooks[0].title.c_str() : nullptr,
@@ -2326,10 +2344,25 @@ void HomeActivity::render(RenderLock&&) {
 
   const int menuStartY = homeTop + homeCoverTileHeight + metrics.homeMenuTopOffset;
   const int menuEndY = safe.y + safe.height;
-  const int menuHeight = std::max(0, menuEndY - menuStartY);
+  int menuHeight = std::max(0, menuEndY - menuStartY);
 
   const bool isCarouselTheme =
       static_cast<CrossPointSettings::UI_THEME>(SETTINGS.uiTheme) == CrossPointSettings::UI_THEME::LYRA_CAROUSEL;
+
+  // Tall screens (the T5): list-style themes leave a band under the menu's last
+  // row. Fill it with reading stats, but only when the whole menu still fits on
+  // one page above it, so the band never pushes an item onto a second page.
+  // Seven rows is the most the list menus show on one page.
+  if (kTallPortraitScreen && !isCarouselTheme && SETTINGS.shouldTrackReadingStats() && menuItems.size() <= 7) {
+    const int usedMenuHeight = GUI.buttonMenuHeight(renderer, static_cast<int>(menuItems.size()));
+    const int bandHeight = menuHeight - usedMenuHeight - kStatsBandGap;
+    if (usedMenuHeight > 0 && bandHeight >= DashboardTheme::homeStatsBandMinHeight(renderer)) {
+      const GlobalReadingStats& bandStats = showAllDevicesStats ? allDevicesGlobalStats : globalStats;
+      DashboardTheme::drawHomeStatsBand(renderer, Rect{safe.x, menuEndY - bandHeight, safe.width, bandHeight},
+                                        bandStats);
+      menuHeight = usedMenuHeight;
+    }
+  }
   const int menuSelectedIndex = isCarouselTheme && mappedInput.hasTouchHardware()
                                     ? carouselMenuTouchDownIndex
                                     : selectorIndex - getHomeMenuSelectionOffset(recentBooks);

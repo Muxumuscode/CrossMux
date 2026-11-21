@@ -61,6 +61,14 @@ class DashboardTheme : public MinimalTheme {
   };
   static void drawSleepReadingStrip(const GfxRenderer& renderer, const Rect& strip, const SleepStripInfo& info);
 
+  // List-style Home themes on tall screens fill the space under their menu with
+  // lifetime totals and, when it fits and the date is known, a 4-week reading
+  // calendar. Draws nothing in a band shorter than homeStatsBandMinHeight().
+  static int homeStatsBandMinHeight(const GfxRenderer& renderer);
+  // Height that also fits the reading calendar row.
+  static int homeStatsBandFullHeight(const GfxRenderer& renderer);
+  static void drawHomeStatsBand(const GfxRenderer& renderer, const Rect& band, const GlobalReadingStats& stats);
+
   static Rect getHomeCoverRect(const GfxRenderer& renderer);
   static Rect getSleepCoverRect(const GfxRenderer& renderer);
 

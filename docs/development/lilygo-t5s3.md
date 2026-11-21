@@ -15,7 +15,7 @@ PCF8563 RTC, BQ27220/BQ25896 battery). It is based on CrossInk
 
 | Repo | Branch | What it holds |
 |---|---|---|
-| [Muxumuscode/CrossMux](https://github.com/Muxumuscode/CrossMux) (fork of uxjulia/CrossInk) | `feat/lilygo-t5s3-v2` | App: T5 build target, tall-screen theme sizing, Dashboard totals + shortcut dock, sleep wiring, dev serial commands |
+| [Muxumuscode/CrossMux](https://github.com/Muxumuscode/CrossMux) (fork of uxjulia/CrossInk) | `main` | App: T5 build target, tall-screen theme sizing, Dashboard totals + shortcut dock, sleep wiring, dev serial commands |
 | [Muxumuscode/freeink-sdk](https://github.com/Muxumuscode/freeink-sdk) (fork of Free-Ink/freeink-sdk) | `t5s3-hw-port` | SDK: T5 hardware fixes ported from the [Aurora fork](https://github.com/jetaudio/crosspoint-aurora) (deep-sleep power, frontlight PWM, GPIO2) |
 
 The `freeink-sdk` submodule points at the SDK fork, so a recursive clone gets
@@ -27,7 +27,7 @@ both.
 2. Clone with submodules, into a path **without spaces**:
 
    ```bash
-   git clone --recurse-submodules -b feat/lilygo-t5s3-v2 https://github.com/Muxumuscode/CrossMux C:/dev/CrossMux
+   git clone --recurse-submodules -b main https://github.com/Muxumuscode/CrossMux C:/dev/CrossMux
    ```
 
 3. Install PlatformIO Core: `pip install --user platformio==6.1.19`.
@@ -63,6 +63,14 @@ both.
    C:\pio\penv\Scripts\pio.exe run -e default                             # X4 regression check
    ```
 
+**Do not give `[env:lilygo]` a `custom_sdkconfig`.** pioarduino rebuilds the
+framework *in place* under `C:\pio\packages\framework-arduinoespressif32-libs`
+for that, which drops `arduino_tinyusb` (USB Drive's `USBMSC`) from the shared
+variant and breaks every other env that uses it. The T5 therefore extends
+`base` and uses the prebuilt `dio_opi` variant, like the X4 Pro. If a build
+starts failing with `'USBMSC' does not name a type`, move that folder aside and
+build again: PlatformIO downloads a clean copy.
+
 The T5 appears as "USB Serial Device (COMx)" (Espressif VID 303A). If flashing
 cannot open the port, hold BOOT, tap RST, release BOOT, and retry.
 
@@ -95,6 +103,11 @@ Font, Layout, More, Location, or Settings tab), and the in-book views
 `contents`, `percent`, `bookstats`, `readeroptions`, `controls`, `bookmarks`,
 `clippings`, `lookuphistory`, `statusbar`. Reader screens open the last book
 read. `screen_tour.py` walks all of them.
+
+`CMD:THEME`, `CMD:SLEEPPREVIEW`, and `CMD:OPEN` reply `DEV_ERR:busy` and do
+nothing while the current screen is busy (Wi-Fi, OTA, a transfer or sync, an
+open keyboard: anything that keeps the device awake), so a stray serial line
+cannot navigate away mid-update.
 
 Flashing note: after an OTA update the bootloader runs **app1**, so writing
 `firmware.bin` to app0 (0x10000) alone changes nothing on the device. Erase
@@ -189,10 +202,15 @@ move a highlight across the dock. Reader menus still use the reader mapping.
 
 - Text-quality check of upstream's T5 waveform on the glass. Aurora's own
   vendor-waveform port was skipped in favour of upstream's newer driver.
-- Aurora's "contact after a polling gap is never a tap" touch fix needs
-  re-deriving against upstream's rewritten touch polling.
-- List-style Home themes (Classic, Lyra, Lyra 3-Covers, RoundedRaff) still leave
-  space below a 5-item menu.
+- Aurora's "contact after a polling gap is never a tap" touch fix is ported
+  (SDK `89ed17a`); confirm on the glass that slow taps after light sleep no
+  longer misfire, then drop this item.
+- List-style Home themes (Classic, Lyra, Lyra 3-Covers, RoundedRaff) now fill
+  the space below the menu with a stats band (`DashboardTheme::drawHomeStatsBand()`,
+  sized from each theme's `buttonMenuHeight()`); check each theme on the glass.
+- Power Off (`sleepTimeoutAction`) uses the BQ25896 ship mode from the sleep
+  park hook. Confirm on the device that PWR turns it back on, and whether the
+  PCF8563 keeps time through it (if not, streaks wait for the next clock sync).
 - Move to the final `v2.0.0` tag when CrossInk publishes it.
 - **Backlight switching by itself** (seen twice; it switched and stayed).
   Suspect: an accidental Home double-tap, whose default action is Toggle

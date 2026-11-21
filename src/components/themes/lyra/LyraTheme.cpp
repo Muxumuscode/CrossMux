@@ -632,6 +632,13 @@ void LyraTheme::drawEmptyRecents(const GfxRenderer& renderer, const Rect rect) c
   renderer.drawText(UI_10_FONT_ID, rect.x + padding, rect.y + rect.height / 2 + 2, tr(STR_START_READING), true);
 }
 
+// Mirrors drawButtonMenu()'s page math: rows start at rect.y, separated by menuSpacing.
+int LyraTheme::buttonMenuHeight(const GfxRenderer&, const int buttonCount) const {
+  if (buttonCount <= 0) return 0;
+  const auto& metrics = UITheme::getInstance().getMetrics();
+  return buttonCount * metrics.menuRowHeight + (buttonCount - 1) * metrics.menuSpacing;
+}
+
 void LyraTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount, int selectedIndex,
                                const std::function<const char*(int index)>& buttonLabel,
                                const std::function<UIIcon(int index)>& rowIcon) const {

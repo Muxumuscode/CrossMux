@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <CrossInkHalFrontlight.h>
 #include <HalClock.h>
@@ -207,7 +207,7 @@ inline SettingInfo buildFontFamilySetting(const SdCardFontRegistry* registry) {
           return static_cast<uint8_t>(CrossPointSettings::BUILTIN_FONT_COUNT + i);
         }
       }
-      // SD font name not found in registry — fall through to built-in
+      // SD font name not found in registry â€” fall through to built-in
     }
     return SETTINGS.fontFamily < CrossPointSettings::BUILTIN_FONT_COUNT ? SETTINGS.fontFamily : 0;
   };
@@ -635,7 +635,16 @@ inline constexpr size_t SLIDE_SWITCH_SETTINGS_COUNT = 1;
 inline constexpr size_t SLIDE_SWITCH_SETTINGS_COUNT = 0;
 #endif
 
-inline size_t getBaseSettingsCapacity() { return BASE_SETTINGS_CAPACITY + 4 + SLIDE_SWITCH_SETTINGS_COUNT; }
+// LilyGo T5: "When Time Runs Out" (sleep or power off through the charger's ship mode).
+#if defined(FREEINK_DEVICE_LILYGO) && FREEINK_DEVICE_LILYGO
+inline constexpr size_t SHIP_MODE_SETTINGS_COUNT = 1;
+#else
+inline constexpr size_t SHIP_MODE_SETTINGS_COUNT = 0;
+#endif
+
+inline size_t getBaseSettingsCapacity() {
+  return BASE_SETTINGS_CAPACITY + 4 + SLIDE_SWITCH_SETTINGS_COUNT + SHIP_MODE_SETTINGS_COUNT;
+}
 
 using SettingVisitor = void (*)(SettingInfo&&, void*);
 // Inspect or move each descriptor during the callback; borrowed references expire on return.
@@ -1147,7 +1156,7 @@ inline std::vector<SettingInfo> buildDisplaySleepSettingsList(const std::vector<
 
 inline std::vector<SettingInfo> buildSystemSettingsParentList(const std::vector<SettingInfo>& allSettings) {
   std::vector<SettingInfo> systemSettings;
-  systemSettings.reserve(12);
+  systemSettings.reserve(13);
   systemSettings.push_back(SettingInfo::Submenu(StrId::STR_SYSTEM_DEVICE, SettingAction::SystemDevice));
   systemSettings.push_back(SettingInfo::Submenu(StrId::STR_SYSTEM_FILES_CACHE, SettingAction::SystemFilesCache));
   systemSettings.push_back(SettingInfo::Submenu(StrId::STR_READING_STATS, SettingAction::SystemReadingStats));
@@ -1162,6 +1171,10 @@ inline std::vector<SettingInfo> buildSystemSettingsParentList(const std::vector<
   systemSettings.push_back(SettingInfo::Action(StrId::STR_SD_FIRMWARE_UPDATE, SettingAction::SdFirmwareUpdate));
 #endif
   systemSettings.push_back(SettingInfo::Action(StrId::STR_RELEASE_NOTES, SettingAction::ReleaseNotes));
+#if defined(FREEINK_DEVICE_LILYGO) && FREEINK_DEVICE_LILYGO
+  // BQ27220 fuel-gauge readings (BatteryInfoActivity).
+  systemSettings.push_back(SettingInfo::Action(StrId::STR_BATTERY, SettingAction::BatteryInfo));
+#endif
   systemSettings.push_back(SettingInfo::Action(StrId::STR_ABOUT, SettingAction::About));
   return systemSettings;
 }
@@ -1179,6 +1192,9 @@ inline std::vector<SettingInfo> buildSystemDeviceSettingsList(const std::vector<
   addSettingByName(settings, allSettings, StrId::STR_DEVICE_NAME);
   addSettingByName(settings, allSettings, StrId::STR_TIME_TO_SLEEP);
   addSettingByName(settings, allSettings, StrId::STR_CUSTOM_BOOTSCREEN);
+#if defined(FREEINK_DEVICE_LILYGO) && FREEINK_DEVICE_LILYGO
+  addSettingByName(settings, allSettings, StrId::STR_TIMEOUT_ACTION);
+#endif
   settings.push_back(SettingInfo::Action(StrId::STR_LANGUAGE, SettingAction::Language));
   settings.push_back(SettingInfo::Action(StrId::STR_DOWNLOAD_LANGUAGES, SettingAction::DownloadLanguages));
 #if CROSSINK_SCALABLE_FONTS
