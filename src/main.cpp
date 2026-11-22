@@ -4,6 +4,7 @@
 #include <BatteryMonitor.h>
 #include <BoardT5S3.h>
 #include <PowerManager.h>
+#include <esp_heap_caps.h>
 // Set just before an auto-sleep whose setting is Power Off; the sleep park hook
 // (setup()) then cuts the battery instead of deep sleeping.
 bool t5PowerOffOnSleep = false;
@@ -1512,6 +1513,14 @@ void setup() {
   SimulatorLifecycle::restoreSilentRebootToken(silentRebootMagic, silentRebootTarget, silentRebootPayload);
 #endif
   BoardConfig::holdPowerRails();
+#if FREEINK_DEVICE_LILYGO && !defined(SIMULATOR)
+  // The T5 build uses pioarduino's prebuilt sdkconfig (USB Drive needs its
+  // arduino_tinyusb), so it misses the other S3 envs'
+  // CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=1024. Apply that threshold at runtime:
+  // allocations above 1 KB go to PSRAM, which keeps internal DRAM for EPUB
+  // layout and the network stack.
+  heap_caps_malloc_extmem_enable(1024);
+#endif
 
   const esp_reset_reason_t rawResetReason = esp_reset_reason();
   const esp_sleep_wakeup_cause_t rawWakeupCause = esp_sleep_get_wakeup_cause();

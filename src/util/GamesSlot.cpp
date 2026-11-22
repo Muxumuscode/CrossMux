@@ -16,20 +16,31 @@ const esp_partition_t* gamesPartition() {
   return esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_FACTORY, "games");
 }
 
+esp_app_desc_t gDesc{};
+
 }  // namespace
 
-bool available() {
+Status status() {
   static int cached = -1;
   if (cached < 0) {
     const esp_partition_t* games = gamesPartition();
-    esp_app_desc_t desc{};
     // Reads and checks the app descriptor's magic: an erased or partially
     // written slot fails here, so CrossMux never offers to boot it.
-    cached = games && esp_ota_get_partition_description(games, &desc) == ESP_OK ? 1 : 0;
-    if (cached) LOG_INF("GAMES", "Games slot: %s %s", desc.project_name, desc.version);
+    if (!games) {
+      cached = static_cast<int>(Status::NoSlot);
+      LOG_INF("GAMES", "No games slot in this partition table (needs a USB update)");
+    } else if (esp_ota_get_partition_description(games, &gDesc) == ESP_OK) {
+      cached = static_cast<int>(Status::Installed);
+      LOG_INF("GAMES", "Games slot: %s %s", gDesc.project_name, gDesc.version);
+    } else {
+      cached = static_cast<int>(Status::Empty);
+      LOG_INF("GAMES", "Games slot is empty");
+    }
   }
-  return cached == 1;
+  return static_cast<Status>(cached);
 }
+
+const char* version() { return status() == Status::Installed ? gDesc.version : ""; }
 
 bool launch() {
   const esp_partition_t* games = gamesPartition();
@@ -72,7 +83,8 @@ bool launch() {
 #else
 
 namespace games_slot {
-bool available() { return false; }
+Status status() { return Status::NoSlot; }
+const char* version() { return ""; }
 bool launch() { return false; }
 }  // namespace games_slot
 

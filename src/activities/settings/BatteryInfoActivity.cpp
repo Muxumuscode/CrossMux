@@ -14,9 +14,22 @@
 
 namespace fui = freeink::ui;
 namespace {
-// The gauge averages current over ~1 s and updates SoC slowly; a few seconds
-// between reads keeps the panel calm and still shows a load change quickly.
+// The gauge averages current over ~1 s and updates SoC slowly. Read it every
+// few seconds, but redraw the e-paper only when something visible moved: any
+// value other than the current, a current change of kCurrentStepMa or more, or
+// kMaxStaleMs since the last redraw (so slow drift still shows).
 constexpr unsigned long kRefreshMs = 5000;
+constexpr unsigned long kMaxStaleMs = 30000;
+constexpr int kCurrentStepMa = 10;
+
+bool visiblyDifferent(const BatteryMonitor::GaugeDetails& a, const BatteryMonitor::GaugeDetails& b) {
+  return a.valid != b.valid || a.millivolts / 10 != b.millivolts / 10 || a.percentage != b.percentage ||
+         std::abs(a.averageCurrentMa - b.averageCurrentMa) >= kCurrentStepMa ||
+         a.temperatureDeciC / 10 != b.temperatureDeciC / 10 || a.remainingMah != b.remainingMah ||
+         a.fullChargeMah != b.fullChargeMah || a.designMah != b.designMah || a.cycleCount != b.cycleCount ||
+         a.healthPercent != b.healthPercent || a.timeToEmptyMin != b.timeToEmptyMin ||
+         a.timeToFullMin != b.timeToFullMin;
+}
 
 enum Row { Charge, State, Current, TimeRow, Voltage, Capacity, Design, Health, Cycles, Temperature, RowCount };
 constexpr StrId labels[] = {StrId::STR_BATTERY_CHARGE,   StrId::STR_BATTERY_STATE,    StrId::STR_BATTERY_CURRENT,
@@ -56,6 +69,7 @@ void BatteryInfoActivity::onEnter() {
   readGauge();
   applySharedUiTheme(app, uiTarget);
   app.setScreen(&BatteryInfoActivity::batteryScreen, this);
+  lastDrawMs = millis();
   requestUpdate();
 }
 
@@ -82,8 +96,17 @@ void BatteryInfoActivity::loop() {
   buttonNavigator.onPreviousRelease([&] { scroll(-visibleRows); });
 
   if (millis() - lastReadMs >= kRefreshMs) {
+    const auto shown = details;
+    const bool wasCharging = charging;
+    const bool hadExternalPower = externalPower;
     readGauge();
-    requestUpdate();
+    if (visiblyDifferent(shown, details) || wasCharging != charging || hadExternalPower != externalPower ||
+        millis() - lastDrawMs >= kMaxStaleMs) {
+      lastDrawMs = millis();
+      requestUpdate();
+    } else {
+      details = shown;  // Keep the drawn values so small current jitter accumulates.
+    }
   }
 }
 

@@ -9,9 +9,20 @@
 // to Reader" reads return_slot and boots that slot again.
 namespace games_slot {
 
-// True when the games slot exists and holds a valid app image. Checked once,
-// then cached; always false on boards without the slot.
-bool available();
+enum class Status {
+  NoSlot,     // Partition table without `games` (OTA cannot add it; needs USB).
+  Empty,      // Slot present, no valid app image in it.
+  Installed,  // Slot holds a valid app image.
+};
+
+// Checked once, then cached; always NoSlot on boards without the slot.
+Status status();
+
+// The installed app's version string, or "" when status() is not Installed.
+const char* version();
+
+// True when the games slot exists and holds a valid app image.
+inline bool available() { return status() == Status::Installed; }
 
 // Save, switch the boot partition to Games and restart. Returns only on
 // failure, with CrossMux's own slot still selected for boot.

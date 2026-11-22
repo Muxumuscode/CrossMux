@@ -13,6 +13,7 @@
 #include "components/TouchHeaderBackButton.h"
 #include "components/UITheme.h"
 #include "components/UiAppHelpers.h"
+#include "util/GamesSlot.h"
 
 namespace fui = freeink::ui;
 namespace {
@@ -22,6 +23,9 @@ enum Row {
   Uid,
 #endif
   Firmware,
+#if FREEINK_DEVICE_LILYGO
+  GamesRow,  // CrossMux Games slot (util/GamesSlot.h)
+#endif
   Build,
   FreeInkSdk,
   Chip,
@@ -51,6 +55,9 @@ constexpr StrId labels[] = {StrId::STR_ABOUT_DEVICE,
                             StrId::STR_ABOUT_UID,
 #endif
                             StrId::STR_ABOUT_FIRMWARE,
+#if FREEINK_DEVICE_LILYGO
+                            StrId::STR_GAMES,
+#endif
                             StrId::STR_ABOUT_BUILD,
                             StrId::STR_ABOUT_FREEINK_SDK,
                             StrId::STR_ABOUT_CHIP,
@@ -233,6 +240,23 @@ void AboutActivity::provideRow(void* user, uint16_t index, fui::ListItem& item) 
     case Firmware:
       item.subtitle = AppVersion::version();
       break;
+#if FREEINK_DEVICE_LILYGO
+    case GamesRow:
+      // OTA cannot change the partition table, so a T5 updated over the air
+      // keeps the old layout until one USB flash adds the games slot.
+      switch (games_slot::status()) {
+        case games_slot::Status::Installed:
+          item.subtitle = games_slot::version();
+          break;
+        case games_slot::Status::Empty:
+          item.subtitle = tr(STR_GAMES_NOT_INSTALLED);
+          break;
+        case games_slot::Status::NoSlot:
+          item.subtitle = tr(STR_GAMES_NEEDS_USB);
+          break;
+      }
+      break;
+#endif
     case Build:
       snprintf(buf, size, "%s / %s / %s", CROSSINK_FIRMWARE_DEVICE_TYPE, AppVersion::gitSha(),
                AppVersion::gitDirtyFlag()[0] == '1'   ? tr(STR_ABOUT_MODIFIED)

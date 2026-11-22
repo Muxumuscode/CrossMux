@@ -232,17 +232,15 @@ move a highlight across the dock. Reader menus still use the reader mapping.
 
 ## Parked
 
-- **Game Boy emulator as a dual-boot app.** Try
-  [T5S3-GameBoy](https://github.com/ShallowGreen123/T5S3-GameBoy) (CrankBoy core,
-  touch controls, ROMs and saves on SD, no hardware mod) standalone first. If its
-  speed and ghosting are acceptable and its license allows redistribution: turn
-  the unused `spiffs` region of `partitions.csv` (0xC90000, 3.4 MB) into a third
-  app slot, add a CrossMux menu entry that sets it as the boot partition and
-  restarts, and add a "Back to CrossMux" entry in the emulator. Needs one USB
-  reflash for the new partition table; OTA must never target the third slot.
-  Not built into CrossMux itself: the T5 app slot is 87.6% full and SD plugins
-  cannot run native code.
+- **CrossMux Games (built).** A separate Game Boy firmware
+  (`repos/CrossMuxGames`) in the `games` factory slot of `partitions_t5.csv`
+  (0xC90000, 3.4 MB; it replaces `spiffs`, so the language/hyphenation cache
+  lives on the SD card at `/.crosspoint/asset-cache.bin`). Home shows **Games**
+  once that slot holds a valid app; Settings > System shows "Games: needs a USB
+  update" on T5s that still have the old partition table, because OTA cannot
+  change it. Needs one USB flash of the partition table plus the Games app:
+  `scripts\lilygo\flash_t5.ps1 -WithPartitions -Games <CrossMuxGames firmware.bin>`.
 - **CrossNext features.** [CrossNext](https://github.com/manuelx900/CrossNext)
   (MIT, CrossPoint 2.0.0 + CrossPlay, X4 Pro) is a source of ideas, not code to
   merge. Candidates: Library Collections/Filter (port into CrossMux); its games
-  could live in the same third slot as the emulator instead of in the reader.
+  could live in the Games slot instead of in the reader.

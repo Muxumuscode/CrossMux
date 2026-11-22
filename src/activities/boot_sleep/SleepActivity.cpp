@@ -43,6 +43,11 @@
 #include "components/themes/dashboard/DashboardTheme.h"
 #include "components/themes/minimal/MinimalTheme.h"
 #include "fontIds.h"
+
+#if FREEINK_DEVICE_LILYGO
+// main.cpp: set just before an auto-sleep whose setting is Power Off.
+extern bool t5PowerOffOnSleep;
+#endif
 #include "images/Logo120.h"
 #include "images/MoonIcon.h"
 
@@ -642,6 +647,11 @@ void SleepActivity::showSleepPopup() {
   const bool quickResume = SETTINGS.usesQuickResumeSleep(fromTimeout);
   const bool overlay = SETTINGS.sleepScreen == CrossPointSettings::OVERLAY && !quickResume;
   const char* message = tr(STR_ENTERING_SLEEP);
+#if FREEINK_DEVICE_LILYGO
+  // Ship mode (main.cpp's sleep park hook) only wakes from the PWR key, not
+  // from BOOT or the screen, so say so. With USB power it sleeps normally.
+  if (t5PowerOffOnSleep && !gpio.isUsbConnected()) message = tr(STR_POWER_OFF_WAKE_HINT);
+#endif
   if (GUI.drawPopup(renderer, message, overlay || quickResume).width > 0) {
     overlayBackgroundAvailable = overlay;
   } else if (quickResume) {
