@@ -1592,6 +1592,7 @@ void SettingsActivity::toggleCurrentSetting() {
         optionPopup.show(StrId::STR_PLUGINS, OPTIONS, 3, SETTINGS.pluginsEnabled ? 0 : 1, [this](const int idx) {
           if (idx == 2) return;
           SETTINGS.pluginsEnabled = idx == 0 ? 1 : 0;
+          SETTINGS.safeModeSavedPluginsEnabled = 0xFF;  // The user's choice replaces safe mode's override.
           pluginevents::refreshSubscriptions();
           if (SETTINGS.pluginsEnabled) SETTINGS.pluginHubPromptHidden = 0;
           SETTINGS.saveToFile();

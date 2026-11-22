@@ -60,6 +60,7 @@
 #include "settings/SettingsActivity.h"
 #include "util/FrontlightPanelActivity.h"
 #include "util/FullScreenMessageActivity.h"
+#include "util/SafeModeActivity.h"
 #include "util/PluginEvents.h"
 #include "util/SwipeAdjustment.h"
 #include "util/TwoFingerSwipe.h"
@@ -803,6 +804,14 @@ void ActivityManager::processPendingActivities() {
   if (APP_STATE.hasPendingAlert.load(std::memory_order_acquire) && pendingAction == PendingAction::None) {
     APP_STATE.hasPendingAlert.store(false, std::memory_order_relaxed);
     pushActivity(std::make_unique<AlertActivity>(renderer, mappedInput));
+  }
+
+  if (safeModePromptPending && pendingAction == PendingAction::None && currentActivity &&
+      currentActivity->isHomeActivity()) {
+    if (auto prompt = makeUniqueNoThrow<SafeModeActivity>(renderer, mappedInput)) {
+      safeModePromptPending = false;
+      pushActivity(std::move(prompt));
+    }
   }
 
   // One-time What's New, only over Home so a wake into a book or a silent reboot into a network screen

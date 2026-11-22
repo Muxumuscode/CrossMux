@@ -17,11 +17,13 @@ const esp_partition_t* gamesPartition() {
 }
 
 esp_app_desc_t gDesc{};
+int cached = -1;
 
 }  // namespace
 
+void refresh() { cached = -1; }
+
 Status status() {
-  static int cached = -1;
   if (cached < 0) {
     const esp_partition_t* games = gamesPartition();
     // Reads and checks the app descriptor's magic: an erased or partially
@@ -84,6 +86,7 @@ bool launch() {
 
 namespace games_slot {
 Status status() { return Status::NoSlot; }
+void refresh() {}
 const char* version() { return ""; }
 bool launch() { return false; }
 }  // namespace games_slot

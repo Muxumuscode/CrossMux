@@ -70,6 +70,16 @@ Result validateOpenImageFile(HalFile& file, size_t partitionSize);
 // never reopens `file`; the caller must keep it open until this returns.
 Result flashValidatedFile(HalFile& file, ProgressCb onProgress, void* ctx);
 
+// CrossMux Games (T5): the separate Games app embeds GAMES_IMAGE_TAG, which
+// lets SD Card Firmware Update recognise its .bin and write it to the `games`
+// factory slot instead of the next OTA slot. The boot partition is left alone,
+// so CrossMux keeps running. NO_PARTITION when the partition table has no
+// games slot.
+constexpr const char* GAMES_IMAGE_TAG = "CROSSMUX-GAMES-IMAGE:1";
+bool isGamesImage(const char* sdPath);
+size_t gamesPartitionSize();
+Result flashGamesFromSdPath(const char* sdPath, ProgressCb onProgress, void* ctx);
+
 const char* resultName(Result r);
 
 // Returns the chip_id at byte 12 of the running app image, or 0xFFFF when it

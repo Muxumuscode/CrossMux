@@ -7,6 +7,13 @@
 // Set just before an auto-sleep whose setting is Power Off; the sleep park hook
 // (setup()) then cuts the battery instead of deep sleeping.
 bool t5PowerOffOnSleep = false;
+// Safe mode: woken with BOOT while IO48 is held. This boot opens Home instead
+// of the last book, keeps plugins off for the session and offers a settings
+// reset (SafeModeActivity).
+bool t5SafeModeBoot = false;
+#define T5_SAFE_MODE_BOOT t5SafeModeBoot
+#else
+#define T5_SAFE_MODE_BOOT false
 #endif
 #include <CrossInkHalFrontlight.h>
 #include <FontCacheManager.h>
@@ -1635,6 +1642,24 @@ void setup() {
     powerManager.startDeepSleep(gpio);
   }
 #if FREEINK_DEVICE_LILYGO
+  // Safe mode chord: hold IO48, then press BOOT to wake. IO48 sits on the
+  // PCA9535 expander (BoardT5S3::begin() above set up its read hook) and is not
+  // a wake source; only BOOT (GPIO0) wakes the T5, so holding IO48 through a
+  // BOOT wake is always deliberate. Wait for both keys to come up so the
+  // BOOT + IO48 combo shortcut does not also fire once the UI is running.
+  if (wakeupReason == HalGPIO::WakeupReason::PowerButton) {
+    gpio.update();
+    if (gpio.isPressed(HalGPIO::BTN_DOWN)) {
+      t5SafeModeBoot = true;
+      LOG_INF("MAIN", "Safe mode boot (IO48 held at wake)");
+      const unsigned long waitStart = millis();
+      while ((gpio.isPressed(HalGPIO::BTN_DOWN) || gpio.isPressed(HalGPIO::BTN_POWER)) &&
+             millis() - waitStart < 10000) {
+        delay(10);
+        gpio.update();
+      }
+    }
+  }
   // Not a wake anyone asked for: the last sleep found the power line still
   // asserted when its (now bounded) release wait timed out, so instead of idling
   // at ~25 mA it parked on a retry timer. Re-test and go straight back down;
@@ -1759,6 +1784,13 @@ void setup() {
   // Apply brightness and wake policy only after the saved settings are loaded.
   Frontlight.initializeHardware();
   SETTINGS.loadFromFile();
+#if FREEINK_DEVICE_LILYGO
+  if (t5SafeModeBoot) {
+    // Session-only: saveToFile() writes the saved value, never this override.
+    SETTINGS.safeModeSavedPluginsEnabled = SETTINGS.pluginsEnabled;
+    SETTINGS.pluginsEnabled = 0;
+  }
+#endif
 #if FREEINK_DEVICE_EEGO_A4
   // Up + Down resets EEGO, so every boot must restore touch as the recovery path.
   SETTINGS.disableReaderTouchscreen = 0;
@@ -2019,7 +2051,7 @@ void setup() {
     // by network screens. Keep X3's existing full refresh behavior unchanged.
     const auto homeRefreshMode = gpio.deviceIsX3() ? HalDisplay::FULL_REFRESH : HalDisplay::HALF_REFRESH;
     activityManager.goHome(HomeMenuItem::NONE, homeRefreshMode);
-  } else if (APP_STATE.openEpubPath.empty() || !APP_STATE.lastSleepFromReader ||
+  } else if (T5_SAFE_MODE_BOOT || APP_STATE.openEpubPath.empty() || !APP_STATE.lastSleepFromReader ||
              mappedInputManager.isPressed(MappedInputManager::Button::Back) || APP_STATE.readerActivityLoadCount > 0) {
     // Boot to home screen if no book is open, last sleep was not from reader, back button is held, or reader activity
     // crashed (indicated by readerActivityLoadCount > 0)
@@ -2037,6 +2069,8 @@ void setup() {
     APP_STATE.saveToFile();
     activityManager.goToReader(path, false, allowFastInitialReaderRefresh, false, quickResumeFrameVisible);
   }
+
+  if (T5_SAFE_MODE_BOOT) activityManager.requestSafeModePrompt();
 
   if (resume == BootResume::Silent || resume == BootResume::Network) {
     // Block until the first paint physically completes. refreshDisplay()

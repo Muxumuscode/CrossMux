@@ -694,6 +694,10 @@ class CrossPointSettings : public PersistableStore<CrossPointSettings> {
   // Zero follows the active reader size.
   uint8_t dictionaryFontPointSize = 0;
   uint8_t pluginsEnabled = 0;
+  // Safe mode (T5 BOOT + IO48 wake) turns plugins off for one session. This
+  // holds the user's saved value so saveToFile() never persists the override;
+  // 0xFF means no override. Not saved itself.
+  uint8_t safeModeSavedPluginsEnabled = 0xFF;
   uint8_t pluginHubPromptHidden = 0;
   // Show hidden files/directories (starting with '.') in the file browser (0 = hidden, 1 = show)
   uint8_t showHiddenFiles = 0;
@@ -845,6 +849,12 @@ class CrossPointSettings : public PersistableStore<CrossPointSettings> {
 
   bool saveToFile() const;
   bool loadFromFile();
+  // Safe mode's "Reset settings": moves the settings file aside (kept on the
+  // SD card as SAFE_MODE_BACKUP_FILE) and leaves an empty one, so the next boot
+  // starts from defaults instead of falling back to a legacy settings file.
+  // The caller must restart without saving SETTINGS again.
+  static constexpr const char* SAFE_MODE_BACKUP_FILE = "/.crosspoint/crossink-settings.safe-mode-backup.json";
+  static bool resetSettingsFileForSafeMode();
   static const char* getFilePath() { return "/.crosspoint/crossink-settings.json"; }
   void toJson(JsonDocument& doc) const;
   bool fromJson(JsonVariantConst doc, bool importingCrossPoint = false);

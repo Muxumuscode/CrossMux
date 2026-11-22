@@ -552,7 +552,7 @@ void CrossPointSettings::toJson(JsonDocument& doc) const {
   doc["tiltPageTurnDirectionSchema"] = TILT_DIRECTION_SCHEMA_CURRENT;
   doc["clockDateHasBeenSynced"] = clockDateHasBeenSynced;
   doc["screenInverted"] = screenInverted;
-  doc["pluginsEnabled"] = pluginsEnabled;
+  doc["pluginsEnabled"] = safeModeSavedPluginsEnabled != 0xFF ? safeModeSavedPluginsEnabled : pluginsEnabled;
   doc["pluginHubPromptHidden"] = pluginHubPromptHidden;
 }
 
@@ -1056,6 +1056,33 @@ bool CrossPointSettings::saveToFile() const {
   toJson(doc);
   WifiTransmitPower::setLimit(doc["wifiTransmitPower"] | uint8_t{0});
   return PersistableStoreBase::writeDocToFileAtomic(SETTINGS_FILE_JSON, doc);
+}
+
+bool CrossPointSettings::resetSettingsFileForSafeMode() {
+  const std::string backup = std::string(SETTINGS_FILE_JSON) + ".bak";
+  const std::string temporary = std::string(SETTINGS_FILE_JSON) + ".tmp";
+  // readDocFromFile() restores a missing file from .bak, so clear the atomic
+  // write leftovers too, then keep the live file as the safe-mode backup.
+  Storage.remove(temporary.c_str());
+  if (Storage.exists(SETTINGS_FILE_JSON)) {
+    Storage.remove(SAFE_MODE_BACKUP_FILE);
+    if (!Storage.rename(SETTINGS_FILE_JSON, SAFE_MODE_BACKUP_FILE)) {
+      LOG_ERR("CPS", "Safe mode: could not move settings aside");
+      return false;
+    }
+  } else if (Storage.exists(backup.c_str())) {
+    Storage.remove(SAFE_MODE_BACKUP_FILE);
+    Storage.rename(backup.c_str(), SAFE_MODE_BACKUP_FILE);
+  }
+  Storage.remove(backup.c_str());
+  // An empty object, not a missing file: a missing file would fall back to the
+  // legacy settings.json (another firmware's) and import that instead.
+  if (!Storage.writeFile(SETTINGS_FILE_JSON, "{}")) {
+    LOG_ERR("CPS", "Safe mode: could not write empty settings");
+    return false;
+  }
+  LOG_INF("CPS", "Safe mode: settings reset; previous file kept at %s", SAFE_MODE_BACKUP_FILE);
+  return true;
 }
 
 bool CrossPointSettings::loadFromFile() {

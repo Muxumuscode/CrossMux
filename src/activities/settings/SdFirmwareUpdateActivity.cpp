@@ -14,6 +14,7 @@
 #include "components/UITheme.h"
 #include "fontIds.h"
 #include "network/FirmwareFlasher.h"
+#include "util/GamesSlot.h"
 
 void SdFirmwareUpdateActivity::onEnter() {
   Activity::onEnter();
@@ -55,6 +56,12 @@ void SdFirmwareUpdateActivity::onPickerResult(const ActivityResult& result) {
     state = State::VALIDATING;
   }
   requestUpdateAndWait();
+#if FREEINK_DEVICE_LILYGO
+  gamesImage = firmware_flash::isGamesImage(firmwarePath.c_str());
+  if (gamesImage) LOG_INF("FW", "Selected image is CrossMux Games");
+#else
+  gamesImage = false;
+#endif
 
   if (!validateFirmware()) {
     RenderLock lock(*this);
@@ -79,13 +86,13 @@ bool SdFirmwareUpdateActivity::validateFirmware() {
   // probed via Update.begin(firmwareSize)/Update.abort() to learn the partition
   // size, which had the side effect of erasing partition state and was wasted
   // work since we only need the size bound for validation here.
-  const esp_partition_t* dest = esp_ota_get_next_update_partition(nullptr);
-  if (!dest) {
-    LOG_ERR("FW", "no next-update partition available");
+  const esp_partition_t* dest = gamesImage ? nullptr : esp_ota_get_next_update_partition(nullptr);
+  const size_t partitionLimit = gamesImage ? firmware_flash::gamesPartitionSize() : dest ? dest->size : 0;
+  if (partitionLimit == 0) {
+    LOG_ERR("FW", gamesImage ? "no games partition (needs a USB update)" : "no next-update partition available");
     setError(firmware_flash::Result::NO_PARTITION);
     return false;
   }
-  const size_t partitionLimit = dest->size;
   if (firmwareSize > partitionLimit) {
     LOG_ERR("FW", "firmware (%u bytes) exceeds partition (%u bytes)", static_cast<unsigned>(firmwareSize),
             static_cast<unsigned>(partitionLimit));
@@ -146,7 +153,7 @@ void SdFirmwareUpdateActivity::promptConfirmation() {
     state = State::CONFIRMING;
   }
   // Show "Update firmware?" with the file path as the body line.
-  std::string heading = tr(STR_FIRMWARE_UPDATE_PROMPT);
+  std::string heading = gamesImage ? tr(STR_GAMES_INSTALL_PROMPT) : tr(STR_FIRMWARE_UPDATE_PROMPT);
   // Use the basename only to keep the body short.
   std::string body = firmwarePath;
   const auto pos = body.find_last_of('/');
@@ -193,12 +200,23 @@ void SdFirmwareUpdateActivity::performUpdate() {
   // pre-confirmation pass. The alreadyValidated parameter on the API stays
   // for callers (e.g. an OTA staging path) where the same byte stream was
   // just hashed and there's no removable-media gap.
-  const auto result = firmware_flash::flashFromSdPath(firmwarePath.c_str(), progressCb, this);
+  const auto result = gamesImage ? firmware_flash::flashGamesFromSdPath(firmwarePath.c_str(), progressCb, this)
+                                 : firmware_flash::flashFromSdPath(firmwarePath.c_str(), progressCb, this);
   if (result != firmware_flash::Result::OK) {
     LOG_ERR("FW", "flash failed: %s", firmware_flash::resultName(result));
     setError(result);
     RenderLock lock(*this);
     state = State::FAILED;
+    requestUpdate();
+    return;
+  }
+
+  if (gamesImage) {
+    // Games lives in its own slot; CrossMux keeps running. Home and About
+    // re-read the slot so the Games entry appears straight away.
+    games_slot::refresh();
+    RenderLock lock(*this);
+    state = State::SUCCESS;
     requestUpdate();
     return;
   }
@@ -214,6 +232,21 @@ void SdFirmwareUpdateActivity::performUpdate() {
 }
 
 void SdFirmwareUpdateActivity::loop() {
+  if (state == State::SUCCESS && gamesImage) {
+    int x = 0;
+    int y = 0;
+    if (TouchHeaderBackButton::wasTapped(mappedInput, renderer) ||
+        mappedInput.wasPressed(MappedInputManager::Button::Back) ||
+        mappedInput.wasPressed(MappedInputManager::Button::Confirm) || mappedInput.wasScreenTapped(x, y)) {
+      if (recoveryMode) {
+        state = State::PICKING;
+        launchPicker();
+        return;
+      }
+      finish();
+    }
+    return;
+  }
   if (state == State::FAILED) {
     int x = 0;
     int y = 0;
@@ -275,7 +308,11 @@ void SdFirmwareUpdateActivity::render(RenderLock&&) {
   } else if (state == State::SUCCESS) {
     renderer.drawCenteredText(UI_10_FONT_ID, top, tr(STR_UPDATE_COMPLETE), true, EpdFontFamily::BOLD);
     UITheme::drawCenteredWrappedText(renderer, textArea, UI_10_FONT_ID, top + lineHeight + metrics.verticalSpacing,
-                                     tr(STR_RESTARTING_HINT), 3);
+                                     gamesImage ? tr(STR_GAMES_INSTALLED_HINT) : tr(STR_RESTARTING_HINT), 3);
+    if (gamesImage) {
+      const auto labels = mappedInput.mapLabels(mappedInput.withBackArrow(tr(STR_BACK)), "", "", "");
+      GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
+    }
   } else if (state == State::FAILED) {
     renderer.drawCenteredText(UI_10_FONT_ID, top, tr(STR_UPDATE_FAILED), true, EpdFontFamily::BOLD);
     int y = top + lineHeight + metrics.verticalSpacing;

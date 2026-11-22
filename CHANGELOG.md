@@ -14,6 +14,8 @@
 - On the T5, `Settings > System > Battery` shows live fuel-gauge readings: charge, current draw, time left or to full, voltage, learned and design capacity, health, charge cycles, and temperature.
 - On the T5, Home has a **Games** entry that restarts into CrossMux Games (a separate Game Boy player in its own 3.4 MB slot); Back to Reader returns. `Settings > System > About` shows the Games version, or "Needs a USB update" on T5s whose partition table predates the slot (`scripts/lilygo/flash_t5.ps1 -WithPartitions -Games <bin>` adds it once).
 - Spanish translations for the CrossMux strings.
+- On the T5, **safe mode**: hold IO48 and press BOOT to wake. Home opens instead of the last book, plugins stay off until the next restart, and you can reset all settings (the old file stays on the SD card).
+- On the T5, `Settings > System > SD Card Firmware Update` recognizes a CrossMux Games `.bin` and installs it into the Games slot without touching the reader, so Games updates need no computer.
 - Developer serial command `CMD:THEME:<n>` switches the Home theme in memory for screenshots, plus T5 USB tools in `scripts/lilygo/`.
 
 ### Changed

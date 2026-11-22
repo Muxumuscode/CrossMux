@@ -90,6 +90,7 @@ class ActivityManager {
   PendingAction pendingAction = PendingAction::None;
   // Set once What's New has entered this boot, so a dismissal whose save failed doesn't re-show it.
   bool releaseNotesShown = false;
+  bool safeModePromptPending = false;
   // Set when an overlay is closed specifically to hand control back to the
   // reader's menu. It must wait until the reader is current again.
   int16_t pendingReaderMenuAction = -1;
@@ -187,6 +188,8 @@ class ActivityManager {
   void goToBoot();
   void goToFullScreenMessage(std::string message, EpdFontFamily::Style style = EpdFontFamily::REGULAR);
   void goToCrashReport();
+  // Set by a safe-mode boot (main.cpp); shows SafeModeActivity once over Home.
+  void requestSafeModePrompt() { safeModePromptPending = true; }
   void goHome(HomeMenuItem initialMenuItem = HomeMenuItem::NONE,
               HalDisplay::RefreshMode initialRefreshMode = HalDisplay::FAST_REFRESH);
 

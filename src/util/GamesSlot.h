@@ -18,6 +18,9 @@ enum class Status {
 // Checked once, then cached; always NoSlot on boards without the slot.
 Status status();
 
+// Forget the cached status, e.g. after SD Card Firmware Update installed Games.
+void refresh();
+
 // The installed app's version string, or "" when status() is not Installed.
 const char* version();
 

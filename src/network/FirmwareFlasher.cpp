@@ -263,13 +263,23 @@ Result validateImageFile(const char* sdPath, size_t partitionSize) {
   return result;
 }
 
+namespace {
+Result writeImageToPartition(HalFile& file, const esp_partition_t* dest, bool selectForBoot, ProgressCb onProgress,
+                             void* ctx);
+}  // namespace
+
 Result flashValidatedFile(HalFile& file, ProgressCb onProgress, void* ctx) {
   const esp_partition_t* dest = esp_ota_get_next_update_partition(nullptr);
   if (!dest || dest == esp_ota_get_running_partition()) {
     LOG_ERR("FLASH", "no next-update partition");
     return Result::NO_PARTITION;
   }
+  return writeImageToPartition(file, dest, true, onProgress, ctx);
+}
 
+namespace {
+Result writeImageToPartition(HalFile& file, const esp_partition_t* dest, const bool selectForBoot,
+                             ProgressCb onProgress, void* ctx) {
   const size_t firmwareSize = file.fileSize();
   LOG_INF("FLASH", "open image size=%u dest=%s @0x%x partsize=%u", static_cast<unsigned>(firmwareSize), dest->label,
           static_cast<unsigned>(dest->address), static_cast<unsigned>(dest->size));
@@ -315,10 +325,77 @@ Result flashValidatedFile(HalFile& file, ProgressCb onProgress, void* ctx) {
     if (onProgress) onProgress(streamPos, firmwareSize, ctx);
     delay(1);
   }
-  if (!ota_boot::switchTo(dest)) {
+  if (selectForBoot && !ota_boot::switchTo(dest)) {
     LOG_ERR("FLASH", "otadata switch failed");
     return Result::OTADATA_FAIL;
   }
+  return Result::OK;
+}
+
+const esp_partition_t* gamesPartition() {
+  return esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_FACTORY, "games");
+}
+}  // namespace
+
+size_t gamesPartitionSize() {
+  const esp_partition_t* games = gamesPartition();
+  return games ? games->size : 0;
+}
+
+bool isGamesImage(const char* sdPath) {
+  // Streams the file once through a small window; the tag may straddle two
+  // chunks, so each read keeps the previous tail in front of it.
+  HalFile file;
+  if (!Storage.openFileForRead("FLASH", sdPath, file) || !file) return false;
+  uint8_t header = 0;
+  if (file.read(&header, 1) != 1 || header != ESP_IMAGE_MAGIC) {
+    file.close();
+    return false;
+  }
+  const size_t tagLen = std::strlen(GAMES_IMAGE_TAG);
+  auto buf = std::unique_ptr<uint8_t[]>(new (std::nothrow) uint8_t[CHUNK + tagLen]);
+  if (!buf) {
+    LOG_ERR("FLASH", "OOM scanning for the Games tag");
+    file.close();
+    return false;
+  }
+  size_t carry = 0;
+  bool found = false;
+  while (!found) {
+    const int got = file.read(buf.get() + carry, CHUNK);
+    if (got <= 0) break;
+    const size_t len = carry + static_cast<size_t>(got);
+    for (size_t i = 0; i + tagLen <= len && !found; ++i) {
+      found = std::memcmp(buf.get() + i, GAMES_IMAGE_TAG, tagLen) == 0;
+    }
+    carry = std::min(len, tagLen - 1);
+    std::memmove(buf.get(), buf.get() + len - carry, carry);
+  }
+  file.close();
+  return found;
+}
+
+Result flashGamesFromSdPath(const char* sdPath, ProgressCb onProgress, void* ctx) {
+  const esp_partition_t* dest = gamesPartition();
+  if (!dest || dest == esp_ota_get_running_partition()) {
+    LOG_ERR("FLASH", "no games partition");
+    return Result::NO_PARTITION;
+  }
+  HalFile file;
+  if (!Storage.openFileForRead("FLASH", sdPath, file) || !file) {
+    LOG_ERR("FLASH", "open failed: %s", sdPath);
+    return Result::OPEN_FAIL;
+  }
+  Result result = validateOpenImageFile(file, dest->size);
+  if (result == Result::OK) result = writeImageToPartition(file, dest, false, onProgress, ctx);
+  file.close();
+  if (result != Result::OK) return result;
+  esp_app_desc_t desc{};
+  if (esp_ota_get_partition_description(dest, &desc) != ESP_OK) {
+    LOG_ERR("FLASH", "games image does not read back");
+    return Result::WRITE_FAIL;
+  }
+  LOG_INF("FLASH", "Games installed: %s", desc.version);
   return Result::OK;
 }
 

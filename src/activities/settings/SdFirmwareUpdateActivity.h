@@ -41,6 +41,9 @@ class SdFirmwareUpdateActivity : public Activity {
  private:
   State state = State::PICKING;
   bool recoveryMode = false;
+  // The picked .bin is CrossMux Games (firmware_flash::isGamesImage): it goes to
+  // the games slot, and CrossMux keeps running afterwards instead of restarting.
+  bool gamesImage = false;
 
   std::string firmwarePath;
   size_t firmwareSize = 0;

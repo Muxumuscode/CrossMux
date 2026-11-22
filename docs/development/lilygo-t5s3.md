@@ -191,6 +191,7 @@ capacitive Home key. Only BOOT and IO48 reach the firmware:
 | BOOT | GPIO0, the app's power key (`BTN_POWER`) | Tap: Previous Page (default); hold: Sleep/Wake | Tap: Up; hold: Sleep/Wake |
 | IO48 | PCA9535 IO12 via the board's button hook, delivered as `BTN_DOWN` | Tap: Next Page | Tap: Down; hold 0.6 s: Select |
 | BOOT + IO48 | Both together | Configurable combo, Screenshot by default | Same |
+| IO48 held, then BOOT to wake | While asleep | Safe mode (see below) | Same |
 | Home | GT911 capacitive key | Configurable (Back/Home by default) | Back/Home |
 | PWR | BQ25896 charger /QON, not the ESP32 | Hardware only: a long hold forces a power reset | Same |
 | RST | ESP32 EN line | Hardware reset; kept as is | Same |
@@ -202,6 +203,25 @@ holds can mean something else); `src/main.cpp` uses IO48 as the configurable
 chord's partner and skips the fixed Power + Down screenshot chord;
 `src/ButtonNames.h` supplies the BOOT/IO48 labels. On Dashboard Home the keys
 move a highlight across the dock. Reader menus still use the reader mapping.
+
+## Safe mode, crash reports, and installing Games from SD
+
+- **Safe mode.** While the T5 sleeps, hold IO48 and press BOOT to wake it. That
+  boot opens Home instead of the last book, keeps plugins off until the next
+  restart (the saved setting is untouched), and offers **Reset settings**. The
+  reset moves `/.crosspoint/crossink-settings.json` to
+  `crossink-settings.safe-mode-backup.json` and restarts with defaults; rename it
+  back to undo. Code: `t5SafeModeBoot` in `src/main.cpp`,
+  `src/activities/util/SafeModeActivity.cpp`,
+  `CrossPointSettings::resetSettingsFileForSafeMode()`.
+- **Crash reports** come from upstream: after a panic the next boot writes
+  `/crash_report.txt` (version, firmware hash, panic reason, backtrace, recent
+  logs) and opens the crash screen.
+- **Games from SD.** Copy CrossMux Games' `firmware.bin` to the card and pick it
+  in Settings > System > SD Card Firmware Update. Images that carry
+  `CROSSMUX-GAMES-IMAGE:1` (`firmware_flash::GAMES_IMAGE_TAG`) are written to the
+  `games` slot and CrossMux keeps running; anything else is a normal CrossMux
+  update. Needs the games partition table (one USB flash, see Parked).
 
 ## Open items
 
