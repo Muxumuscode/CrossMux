@@ -12,7 +12,6 @@
 - On the T5, the list-style Home themes (Classic, Lyra, Lyra 3-Covers, RoundedRaff) use the space under the menu for your lifetime totals and a 4-week reading calendar with your current streak.
 - On the T5, `Settings > System > Device > When Time Runs Out` can power the reader off instead of sleeping when the auto-sleep timer expires. The sleep screen stays on the panel; press PWR to turn it back on. With USB connected it sleeps as usual.
 - On the T5, `Settings > System > Battery` shows live fuel-gauge readings: charge, current draw, time left or to full, voltage, learned and design capacity, health, charge cycles, and temperature.
-- On the T5, `File Transfer > USB Drive` shows the SD card on a computer as a removable drive.
 - On the T5, Home has a **Games** entry that restarts into CrossMux Games (a separate Game Boy player in its own 3.4 MB slot); Back to Reader returns. `Settings > System > About` shows the Games version, or "Needs a USB update" on T5s whose partition table predates the slot (`scripts/lilygo/flash_t5.ps1 -WithPartitions -Games <bin>` adds it once).
 - Spanish translations for the CrossMux strings.
 - Developer serial command `CMD:THEME:<n>` switches the Home theme in memory for screenshots, plus T5 USB tools in `scripts/lilygo/`.
@@ -25,7 +24,6 @@
 
 ### Fixed
 
-- On the T5, the reader again sends allocations over 1 KB to PSRAM (lost when the USB Drive build switched to the prebuilt SDK config), which leaves internal RAM free for large EPUB chapters.
 - On the T5, Power Off says "Hold PWR to turn on" as it goes off, since BOOT and the screen cannot wake it.
 - The T5 Battery screen redraws only when a reading visibly changes, instead of every 5 seconds.
 

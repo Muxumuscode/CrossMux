@@ -63,13 +63,18 @@ both.
    C:\pio\penv\Scripts\pio.exe run -e default                             # X4 regression check
    ```
 
-**Do not give `[env:lilygo]` a `custom_sdkconfig`.** pioarduino rebuilds the
-framework *in place* under `C:\pio\packages\framework-arduinoespressif32-libs`
-for that, which drops `arduino_tinyusb` (USB Drive's `USBMSC`) from the shared
-variant and breaks every other env that uses it. The T5 therefore extends
-`base` and uses the prebuilt `dio_opi` variant, like the X4 Pro. If a build
-starts failing with `'USBMSC' does not name a type`, move that folder aside and
-build again: PlatformIO downloads a clean copy.
+**No USB Drive on the T5.** USB Drive needs pioarduino's prebuilt
+`arduino_tinyusb`, which only survives without a `custom_sdkconfig`. Without
+`firmware_tuned`'s sdkconfig the T5 loses about 44 KB of internal RAM (171 KB
+free at idle drops to 128 KB, the largest block from 131 KB to 86 KB), and long
+chapters such as the 375 KB Notes in *An Immense World* then fail with "Chapter
+needs too much memory". So `[env:lilygo]` extends `firmware_tuned` on the
+`qio_opi` variant with the same sdkconfig as Sticky, and books go over Wi-Fi or
+USB serial instead. pioarduino rebuilds that variant *in place* under
+`C:\pio\packages\framework-arduinoespressif32-libs`; the X4 Pro uses
+`dio_opi`, so it is not affected. If a build ever fails with `'USBMSC' does not
+name a type`, move that folder aside and build again: PlatformIO downloads a
+clean copy.
 
 The T5 appears as "USB Serial Device (COMx)" (Espressif VID 303A). If flashing
 cannot open the port, hold BOOT, tap RST, release BOOT, and retry.
