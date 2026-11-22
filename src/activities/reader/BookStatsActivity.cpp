@@ -343,10 +343,27 @@ bool BookStatsActivity::showNextStatsPage() {
     return true;
   }
 
+  if (page == Page::ThisDevice || page == Page::AllDevices) {
+    if (!yearInReadingLoaded) {
+      // A failed load (no clock) leaves zeros, shown as an empty year.
+      yearInReading.load();
+      yearInReadingLoaded = true;
+    }
+    page = Page::Year;
+    requestUpdate();
+    return true;
+  }
+
   return false;
 }
 
 bool BookStatsActivity::showPreviousStatsPage() {
+  if (page == Page::Year) {
+    page = showAllDevicesStats ? Page::AllDevices : Page::ThisDevice;
+    requestUpdate();
+    return true;
+  }
+
   if (page == Page::AllDevices) {
     page = Page::ThisDevice;
     requestUpdate();
@@ -562,7 +579,7 @@ void BookStatsActivity::loop() {
     return;
   }
 
-  if (page == Page::ThisDevice && showAllDevicesStats && downOrRightPressed) {
+  if (downOrRightPressed) {
     showNextStatsPage();
   }
 }
@@ -582,18 +599,23 @@ void BookStatsActivity::render(RenderLock&&) {
                              estimatedTimeLeftSeconds, true, hasEditableBook(), true);
       break;
     case Page::ThisDevice:
-      renderGlobalStatsPage(renderer, &mappedInput, tr(STR_STATS_THIS_DEVICE_SCREEN), globalStats, true,
-                            showAllDevicesStats, &dailySummary, canSyncReadingStats());
+      renderGlobalStatsPage(renderer, &mappedInput, tr(STR_STATS_THIS_DEVICE_SCREEN), globalStats, true, true,
+                            &dailySummary, canSyncReadingStats());
       break;
     case Page::AllDevices:
-      renderGlobalStatsPage(renderer, &mappedInput, tr(STR_STATS_ALL_DEVICES_SCREEN), allDevicesStats, true, false);
+      renderGlobalStatsPage(renderer, &mappedInput, tr(STR_STATS_ALL_DEVICES_SCREEN), allDevicesStats, true, true);
+      break;
+    case Page::Year:
+      renderYearInReadingPage(renderer, &mappedInput, yearInReading, true);
       break;
     case Page::EditDates:
       renderEditBookDatesPage(renderer, &mappedInput, bookTitle, stats, selectedEditField, true);
       break;
   }
   if (page != Page::EditDates) {
-    drawPageIndicators(renderer, static_cast<int>(page), showAllDevicesStats ? 3 : 2);
+    const int totalPages = showAllDevicesStats ? 4 : 3;
+    const int pageIndex = page == Page::Year ? totalPages - 1 : static_cast<int>(page);
+    drawPageIndicators(renderer, pageIndex, totalPages);
   }
   renderer.displayBuffer();
 }

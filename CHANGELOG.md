@@ -16,6 +16,7 @@
 - Spanish translations for the CrossMux strings.
 - On the T5, **safe mode**: hold IO48 and press BOOT to wake. Home opens instead of the last book, plugins stay off until the next restart, and you can reset all settings (the old file stays on the SD card).
 - On the T5, `Settings > System > SD Card Firmware Update` recognizes a CrossMux Games `.bin` and installs it into the Games slot without touching the reader, so Games updates need no computer.
+- Reading Stats has a **Year in Reading** page after This Device (and All Devices): books finished, reading time, days read, longest streak and highlights for the year, your most-highlighted book, and one of this year's highlights as a quote that changes daily. From January 1 to 14 it shows the year just ended. It needs the clock, and counts this device only.
 - Developer serial command `CMD:THEME:<n>` switches the Home theme in memory for screenshots, plus T5 USB tools in `scripts/lilygo/`.
 
 ### Changed

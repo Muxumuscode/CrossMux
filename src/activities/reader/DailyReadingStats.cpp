@@ -535,6 +535,27 @@ bool secondsFor(uint32_t day, uint32_t& seconds) {
   return true;
 }
 
+bool sumSeconds(uint32_t firstDay, uint32_t lastDay, uint64_t& total) {
+  total = 0;
+  if (firstDay > lastDay || !prepareDirectory()) return firstDay > lastDay;
+  // One monthly snapshot read per month, not per day.
+  for (uint32_t day = firstDay; day <= lastDay;) {
+    uint32_t first;
+    uint8_t count;
+    if (!monthFor(day, first, count) || !migrateMonth(first, count)) return false;
+    Month month;
+    if (!loadMonth(first, count, month)) return false;
+    for (; day <= lastDay && day < first + count; ++day) {
+      uint32_t seconds = month.days[day - first].seconds;
+      for (const Cache& c : cache) {
+        if (c.day == day) seconds = std::max(seconds, c.counter.seconds);
+      }
+      total += seconds;
+    }
+  }
+  return true;
+}
+
 Summary summarize(uint32_t today) {
   constexpr uint32_t days = 7;
   Summary summary;

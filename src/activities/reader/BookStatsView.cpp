@@ -10,6 +10,7 @@
 #include <cstdio>
 
 #include "MappedInputManager.h"
+#include "YearInReading.h"
 #include "components/CompactHeader.h"
 #include "components/TouchActionButtons.h"
 #include "components/TouchHeaderBackButton.h"
@@ -721,6 +722,29 @@ void renderGlobalStatsPage(GfxRenderer& renderer, const MappedInputManager* mapp
     const auto labels =
         mappedInput->mapLabels(mappedInput->withBackArrow(tr(STR_EXIT)), showSyncAction ? tr(STR_SYNC) : "",
                                mappedInput->withBackArrow(tr(STR_BACK)), showMoreButton ? tr(STR_MORE) : "");
+    GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4, true);
+  }
+}
+
+void renderYearInReadingPage(GfxRenderer& renderer, const MappedInputManager* mappedInput, const YearInReading& year,
+                             const bool showButtonHints) {
+  renderer.clearScreen();
+  const auto& metrics = UITheme::getInstance().getMetrics();
+  const auto& layout = getStatsLayout(renderer, mappedInput, true, showButtonHints, true);
+  char title[64];
+  snprintf(title, sizeof(title), "%s %u", tr(STR_YEAR_IN_READING), year.year);
+  drawStatsHeader(renderer, mappedInput, title, showButtonHints);
+  const auto safe = statsSafeArea(renderer, showButtonHints);
+  const int headerHeight = statsHeaderHeight(metrics, layout, mappedInput);
+  const auto header = UITheme::getHeaderRect(renderer, headerHeight, safe);
+  const int top = header.y + header.height + layout.topGap;
+  const int bottom = safe.y + metrics.topPadding + statsAvailableHeight(renderer, showButtonHints);
+  const int x = safe.x + metrics.contentSidePadding;
+  year.draw(renderer, x, top, safe.width - metrics.contentSidePadding * 2, std::max(0, bottom - top));
+
+  if (showButtonHints && mappedInput) {
+    const auto labels = mappedInput->mapLabels(mappedInput->withBackArrow(tr(STR_EXIT)), "",
+                                               mappedInput->withBackArrow(tr(STR_BACK)), "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4, true);
   }
 }

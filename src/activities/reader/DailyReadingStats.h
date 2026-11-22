@@ -22,6 +22,9 @@ bool uploadPending(bool (*upload)(void*, uint32_t day, uint32_t seconds), void* 
 bool pruneSyncedMonths(const ReadingStatsDate& today);
 // Seconds for one day, including accepted seconds not yet checkpointed to SD.
 bool secondsFor(uint32_t day, uint32_t& seconds);
+// Total seconds for firstDay..lastDay inclusive, reading each month once. Months pruned after a
+// stats-server sync count as zero.
+bool sumSeconds(uint32_t firstDay, uint32_t lastDay, uint64_t& total);
 
 // Today plus a 7-calendar-day average. Days without reading count as zero.
 struct Summary {

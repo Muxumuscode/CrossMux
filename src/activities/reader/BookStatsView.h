@@ -7,6 +7,7 @@
 #include "GlobalReadingStats.h"
 
 class GfxRenderer;
+struct YearInReading;
 class MappedInputManager;
 
 namespace BookStatsTouchTarget {
@@ -38,5 +39,8 @@ void renderNoRtcCombinedStatsPage(GfxRenderer& renderer, const MappedInputManage
                                   const GlobalReadingStats& deviceStats, const GlobalReadingStats* allDevicesStats,
                                   bool showButtonHints, bool showSyncAction = false);
 
+// This year (or, early in January, last year) on this device: totals, top book and a quote.
+void renderYearInReadingPage(GfxRenderer& renderer, const MappedInputManager* mappedInput, const YearInReading& year,
+                             bool showButtonHints);
 void renderEditBookDatesPage(GfxRenderer& renderer, const MappedInputManager* mappedInput, const std::string& bookTitle,
                              const BookReadingStats& stats, int selectedField, bool showButtonHints);

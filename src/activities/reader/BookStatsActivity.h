@@ -8,9 +8,10 @@
 #include "BookReadingStats.h"
 #include "BookStatsView.h"
 #include "GlobalReadingStats.h"
+#include "YearInReading.h"
 
 class BookStatsActivity final : public Activity {
-  enum class Page : uint8_t { PerBook, ThisDevice, AllDevices, EditDates };
+  enum class Page : uint8_t { PerBook, ThisDevice, AllDevices, Year, EditDates };
 
   std::string bookTitle;
   std::string bookCachePath;
@@ -27,6 +28,9 @@ class BookStatsActivity final : public Activity {
   uint32_t estimatedTimeLeftSeconds = 0;
   GfxRenderer::Orientation previousOrientation = GfxRenderer::Orientation::Portrait;
   Page page = Page::PerBook;
+  // Loaded the first time the Year page is shown: it reads every book's stats and clippings.
+  YearInReading yearInReading;
+  bool yearInReadingLoaded = false;
   int selectedEditField = 0;
   bool didChangeStats = false;
   BookReadingStats dateEditStatsSnapshot;
