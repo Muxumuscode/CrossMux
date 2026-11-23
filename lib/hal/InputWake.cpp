@@ -10,6 +10,9 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <freertos/task.h>
+#if FREEINK_DEVICE_LILYGO
+#include <BoardT5S3Pins.h>
+#endif
 
 #include <algorithm>
 #include <atomic>
@@ -191,6 +194,19 @@ bool InputWake::begin() {
     removeWakePins();
     return false;
   }
+#if FREEINK_DEVICE_LILYGO
+  // The T5's IO48 key is read through the PCA9535 expander (the board's button
+  // hook), so it has no GPIO edge of its own. Without one, the capture task only
+  // samples it on its idle timeout (250 ms) and a quick tap between two samples
+  // is lost; BOOT, a real GPIO, never is. The expander pulls its INT line
+  // (GPIO38, set up as INPUT_PULLUP by BoardT5S3::begin()) low on any input
+  // change, so an edge there samples IO48 at once. Other expander inputs (the
+  // EPD PMIC's status lines) only add harmless extra samples during refreshes.
+  if (!addWakePin(T5S3_PCA9535_INT)) {
+    removeWakePins();
+    return false;
+  }
+#endif
   return wakePins != 0;
 }
 
