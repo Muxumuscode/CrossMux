@@ -27,6 +27,8 @@
 
 ### Fixed
 
+- On the T5, page turns with Text Anti-Aliasing flash once instead of twice: the page and its gray text edges now go to the panel in a single refresh (needs the SDK patch in `scripts/lilygo/sdk-patches/`).
+
 - On the T5, quick taps on the IO48 key are no longer missed. The key is read through the I/O expander, which was only checked every quarter second while idle; its interrupt line now triggers a read straight away, as BOOT always did.
 
 - On the T5, Power Off says "Hold PWR to turn on" as it goes off, since BOOT and the screen cannot wake it.
