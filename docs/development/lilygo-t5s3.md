@@ -166,24 +166,21 @@ see an update as newer; flash a `2.0.0.1` or later build over USB once.
 
 ## Pending SDK patches
 
-`scripts/lilygo/sdk-patches/` holds freeink-sdk changes made in a session that
-could not push to `Muxumuscode/freeink-sdk`. The CrossMux gitlink still points
-at the published SDK commit, so builds work without them; apply them to get the
-fix:
+A session that cannot push to `Muxumuscode/freeink-sdk` (a cloud session, for
+example) leaves its SDK changes as `.patch` files in `scripts/lilygo/sdk-patches/`.
+The CrossMux gitlink stays on the published SDK commit, so builds keep working.
+To take them in:
 
 ```powershell
-powershell -File scripts\lilygo\apply_sdk_patches.ps1     # commits onto freeink-sdk t5s3-hw-port
+powershell -File scripts\lilygopply_sdk_patches.ps1   # commits onto freeink-sdk t5s3-hw-port
 C:\pio\penv\Scripts\pio.exe run -e lilygo -t upload --upload-port COM7
-git -C freeink-sdk push origin t5s3-hw-port                 # publish the SDK commit
-git add freeink-sdk; git commit -m "chore: advance freeink-sdk for combined grayscale"
+git -C freeink-sdk push <fork remote> t5s3-hw-port       # the remote for Muxumuscode/freeink-sdk
+git add freeink-sdk; git commit -m "chore: advance freeink-sdk"
 ```
 
-Then delete the applied `.patch` files in the same commit.
-
-- `0001-fix-lgfx-epd-one-refresh-per-anti-aliased-page-combi.patch`: the T5
-  display driver declared a separate grayscale base, so every anti-aliased page
-  took two refreshes (a double flash). It now stages the B/W page and pushes
-  base + gray in one refresh (`GrayscaleBase::Combined`).
+Delete the applied `.patch` files in that same commit. None are pending now:
+the combined-grayscale display fix (one refresh per anti-aliased page) is in
+the SDK as `85df21c`.
 
 ## Sleep screen: Custom + Reading Strip
 
