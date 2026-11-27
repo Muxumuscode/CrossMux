@@ -11,6 +11,7 @@ int relaySyncHttp(void* context, const char* method, const char* endpoint, const
 
 enum class ProcessResult {
   None,
+  SyncActivity,
   ScreenshotRequested,
   // Developer aid: "CMD:THEME:<n>" asks for UI theme <n> (in memory only) and
   // a fresh Home, so every theme can be captured without touching the device.

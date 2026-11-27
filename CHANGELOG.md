@@ -21,6 +21,8 @@
 
 ### Changed
 
+- Based on CrossInk v2.0.0 (final release, 2026-11-24).
+- On the T5, the battery gauge is set to the 1500 mAh cell, so a full charge reads 100% instead of about 60% (from freeink-sdk).
 - On the T5, the version shows as `CrossMux 2.0.0.1` at the bottom of Settings, in About, on the boot screen, and in Check for Updates.
 - On the T5, Check for Updates now follows CrossMux's own releases instead of CrossInk's. CrossMux builds are numbered `2.0.0.1`, `2.0.0.2`, and so on, and devices only update to full releases, never pre-releases.
 - On the T5, Controls and Quick Actions name the keys as printed on the case (BOOT, IO48) and no longer list settings for a side key the T5 doesn't have. New T5 installs default BOOT's tap to Previous Page in books, so BOOT pages back and IO48 pages forward.
@@ -42,7 +44,7 @@
 - Serial screenshots are complete on ESP32-S3 boards using the hardware USB CDC port.
 - Builds on Windows no longer fail with duplicate build-info objects.
 
-## [v2.0.0] - 2026-11-19
+## [v2.0.0] - 2026-11-24
 
 ### Added
 
@@ -57,10 +59,11 @@
 - Set each OPDS server’s download folder and optionally use its filenames to match reading progress across devices. Downloads fall back to the chosen filename format when the option is off or the server supplies an unsafe or missing name.
 - Enable SD card plugins in `Settings > System` and open Plugins from Home. Plugins support browser interfaces, on-device catalogs, sign-in, and download folders. The optional Plugin Hub discovers, installs, and updates compatible plugins. Hold Confirm or long-press an installed plugin to open its uninstall prompt (CrossPoint #4100).
 - Install and edit interface language packs from SD. Missing strings fall back to English. Browser editors and release downloads use a versioned English template and compatibility catalog.
+- Download Azerbaijani, Bosnian, Bulgarian, Indonesian, Norwegian Bokmål, and Persian for the interface. Only English is built in.
 - Install, update, or remove EPUB hyphenation packs. English is built in, and affected book layouts rebuild after a pack changes.
 - On your first upgrade to v2.0.0, What’s New explains how to install interface languages and hyphenation packs. It also shows where to enable SD card plugins and sync reading stats and clippings with CrossPoint Sync. Reopen the screen from `Settings > System > Release Notes`.
 - On ESP32-S3 readers, install static OpenType fonts from SD or the web uploader, including CFF fonts with .otf or .ttf extensions. EPUBs can also use embedded publisher fonts, including Adobe-obfuscated fonts, through `Off`, `Ignore Body Font`, and `All Text` modes. Variable fonts and collections remain unsupported (CrossPoint #3646, #3717).
-- Render EPUB drop caps, borders, shading, fieldsets that span pages, preserved whitespace, and more CSS selectors. Scalable fonts support mixed sizes within a line, and X3/X4 use available bitmap sizes for headings and other publisher sizes (CrossPoint #3891).
+- Render EPUB drop caps, borders, shading, fieldsets that span pages, preserved whitespace, and more CSS selectors. Scalable fonts support mixed sizes within a line, and X3/X4 scale their loaded bitmap fonts for larger publisher text (CrossPoint #3891).
 - Choose grayscale or black-and-white EPUB images independently of text smoothing, globally or per book. EPUBs also display non-interlaced GIFs, using the first frame of an animation. The web uploader can keep embedded fonts when optimizing an EPUB.
 - Choose Normal, Dark, or Darker text with smooth edges and add ruled lines in three shades to EPUB and plain-text books. EEGO has a two-tone text option.
 - Adjust word spacing from −4 to +4 and character spacing from −5 to +5, with live previews in Reader settings and the in-book Font menu. When `All Text` is set for Publisher Fonts, the font name is displayed as the reader Font Family.
@@ -76,6 +79,7 @@
 - Use a UI Fallback Font for missing menu and dialog characters, independently of the reading font.
 - Layer a transparent sleep image over the current book cover with Cover Overlay (CrossPoint #3770).
 - See hardware, display, firmware, FreeInk SDK revision, storage, and memory details in About. Export local support JSON with selected diagnostics and preferences. Optional EPUB overrides are anonymized, and identifiers, credentials, and reading history are excluded.
+- Choose whether holding a word opens its definition, saves a clipping, or shows the action toolbar. Dictionary lookup tries other installed dictionaries when the selected one has no match (#966).
 
 ### Changed
 
@@ -92,9 +96,11 @@
 - Use clearer web dialogs, dropdowns, and upload feedback. Plugin files skip redundant transfers through ETags, and plugin automation waits until a job starts to allocate job storage (CrossPoint #3984, #4090, #4193, adapted from CrossPoint #4085 and #4288).
 - Make dictionary lookups quicker, move definition pagination to the bottom right, and add a close button on touch devices. Use side-by-side number pads in landscape and consistent labels for covers, time sync, shortcuts, and loading.
 - Reduce font lookup and kerning memory use and validate TTFs faster. Tuned firmware builds omit unused Arduino, Bluetooth, and Zigbee components (adapted from serialx and CrossPoint #3831, #3838, #3857).
+- Reopen EPUBs with many chapters faster by reading cached chapter offsets together.
 
 ### Fixed
 
+- Fix an occasional reboot when putting an X3 or X4 to sleep with plugins enabled (#973).
 - Index EPUBs faster when many table-of-contents entries point to the same chapter file or chapter files are stored out of reading order.
 - Credit EPUB and XTC reading to the correct local day across midnight. Preserve live stats if a save fails, retry updates after SD errors, and finish pending saves before sleep, reader restart, or USB Drive handoff.
 - Preserve unreadable stats and offer to restore them from a verified backup. Keep daily, manual, and clockless backups separate and prune numbered backups in the correct order beyond 999.
@@ -124,12 +130,20 @@
 - Connect to TLS 1.3 servers using SHA-384 certificate signatures.
 - Keep File Transfer responsive when uploads or browser requests stall or fail. Remove incomplete uploads, preserve files after failed WebDAV replacements, report failed copies and web settings saves, and route captive-portal probes without intercepting WebDAV writes (CrossPoint #4472).
 - Keep web dialogs open when a selection drag ends outside them, keep font notifications visible while scrolling, and normalize accented filenames on upload and duplicate checks (adapted from CrossPoint #3931, #3961, #3984).
-- Retry saved Wi-Fi after scanning, show clear Forget and Cancel choices on button devices
+- Retry saved Wi-Fi after scanning, and show clear Forget and Cancel choices on button devices.
 - Keep multibyte network names and masked password previews intact (CrossPoint #4079, #4106).
 - Keep Nearby and firmware transfers responsive during storage checks and let USB waits yield to other tasks. Preserve serial screenshots and pre-crash logs, including after low-power USB interruptions (CrossPoint #3737).
 - Hide tilt controls when the sensor cannot support page turning or fails its startup check, while keeping saved preferences (CrossPoint 8fc2b66 and #4078).
-- Make EPUB highlight handles easier to grab and drag across lines on touch readers.
+- Make EPUB highlight handles easier to grab and keep them following your finger across lines during e-ink refreshes, including when you lift to look up or clip the selection.
 - Reduce repeated SD card reads when indexing EPUBs with ruled lines and a custom reader font.
+- Dither EPUB illustrations only after resizing, with separate output for Gray and B&W (including Night Mode).
+- Readest and other plugins can send several queued reading sessions on one sleep instead of one per sleep.
+- Preserve existing books, fonts, settings, and reading positions when SD saves or transfers are interrupted. Keep USB Drive mounted while the computer sleeps and finish pending writes before ejecting.
+- Explain SD card startup errors and show how to reconnect the card or check its filesystem.
+- Make reading progress sync more reliable on large SD libraries. Reuse saved book paths to avoid repeatedly scanning the card.
+- Keep large EPUB drop caps sharp by drawing them at their intended size.
+- Show the Back button hint while viewing EPUB footnotes on button-only readers.
+- Releasing Power after starting Picco no longer selects a menu item on the first screen.
 
 ## [v1.6.1] - 2026-10-03
 

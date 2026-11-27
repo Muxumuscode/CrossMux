@@ -24,6 +24,8 @@ struct portMUX_TYPE {};
   }
 #endif
 
+enum class StrId : uint16_t;
+
 class Activity;    // forward declaration
 class RenderLock;  // forward declaration
 
@@ -186,7 +188,7 @@ class ActivityManager {
   // captured over USB. Go Home afterwards to redraw the normal UI.
   void previewSleepScreen();
   void goToBoot();
-  void goToFullScreenMessage(std::string message, EpdFontFamily::Style style = EpdFontFamily::REGULAR);
+  void goToFullScreenMessage(StrId title, StrId message);
   void goToCrashReport();
   // Set by a safe-mode boot (main.cpp); shows SafeModeActivity once over Home.
   void requestSafeModePrompt() { safeModePromptPending = true; }
