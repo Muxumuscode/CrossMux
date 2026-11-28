@@ -1,0 +1,15 @@
+{
+  "updated": "2026-11-28",
+  "upstreams": {
+    "uxjulia/CrossInk": {
+      "development": { "sha": "b49c55faf074993f26b935cc11a769d82927b8bd", "date": "2026-11-27" },
+      "main": { "sha": "d53849e1c620b7d600d9fe02b544fdf1534d4f51", "date": "2026-11-25" }
+    },
+    "crosspoint-reader/crosspoint-reader": {
+      "develop": { "sha": "dd86a5ec12e38ebd4746d4f38f6f4d8f31b67a7b", "date": "2026-11-27" }
+    },
+    "jetaudio/crosspoint-aurora": {
+      "aurora": { "sha": "c3105becc96e183135d8c05bb19b32497f5d9b96", "date": "2026-10-02" }
+    }
+  }
+}
